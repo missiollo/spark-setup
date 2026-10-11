@@ -9,6 +9,7 @@ Odtwarzalna konfiguracja NVIDIA DGX Spark do lokalnej inferencji LLM (vLLM w kon
 | `docs/backlog.md` | stan prac, najbliższe kroki, backlog B1… — **zacznij tutaj** |
 | `docs/findings.md` | znaleziska, pomiary, zalecenia, procedura odzyskiwania, troubleshooting |
 | `docs/decisions.md` | decyzje D-01… z uzasadnieniem i odrzuconymi alternatywami |
+| `docs/czas-pracy.md` | czas pracy nad PoC do rozliczenia, z podstawą każdego wpisu |
 | `docs/context/` | materiały SOFA: `sofa-obserwacje.md` (koncepcja), `llm-pamiec-wzor.md` (pamięć, prefill/decode), `rag-ea-symulator.html` |
 
 ## Środowisko

@@ -1,6 +1,6 @@
 # Backlog i stan prac
 
-Jedno miejsce na to, co zostało do zrobienia. Szczegóły i uzasadnienia: [`findings.md`](findings.md), decyzje: [`decisions.md`](decisions.md).
+Jedno miejsce na to, co zostało do zrobienia. Szczegóły i uzasadnienia: [`findings.md`](findings.md), decyzje: [`decisions.md`](decisions.md), czas pracy: [`czas-pracy.md`](czas-pracy.md).
 
 ## Stan na 2026-10-11 (gdzie skończyliśmy)
 
@@ -65,15 +65,3 @@ Zmiany zidentyfikowane, celowo jeszcze niewprowadzone. Numeracja B* jest stała 
 | B12 | symulator (`docs/context/rag-ea-symulator.html`) | Efektywne TFLOPS i decode zależne od modelu (MoE ~30–55, dense ~110–130 TFLOPS; decode zmierzony) | `findings.md` 3.5 | średni |
 | B13 | modele | `make pin` — przypięcie rewizji wszystkich modeli z działających zestawów | odtwarzalność po resecie | średni |
 | B14 | compose / odtwarzalność | Sprawdzić zachowanie zestawu B po reboocie Sparka; jeśli start równoległy kończy się OOM — zdjąć `restart: unless-stopped` z usług vLLM albo uruchamiać je jednostką systemd wołającą `make up SET=b` | wszystkie kontenery mają `restart: unless-stopped`, a `docker` jest `enabled`, więc po reboocie trzy instancje vLLM startują **równolegle**, bez kolejności wymuszanej przez `depends_on` + healthcheck w `make up`. Przy sumie 0.82 i spadku wolnej pamięci do ~14,7 GiB przy ładowaniu sekwencyjnym (`findings.md` 3.6) może to skończyć się OOM i pętlą restartów. Nieprzetestowane — Spark z działającym zestawem B nie był jeszcze restartowany | średni |
-
-## Czas pracy
-
-Do rozliczenia w pracy. Przy każdym wpisie podstawa, żeby było jasne, co wynika z logów i commitów, a co jest szacunkiem.
-
-| Data | Czas | Podstawa | Pewność |
-|---|---|---|---|
-| 2026-10-10 | 3–5 h | dwa dokumenty koncepcyjne (`context/sofa-obserwacje.md`, `context/llm-pamiec-wzor.md` — po ~5 000 słów) i symulator `context/rag-ea-symulator.html`; jedyny znacznik czasu to `date:` we frontmatterze | **niska** — oszacowane z objętości tekstu, bez godzin. Dokładne godziny są w rozmowie na claude.ai (projekt „local ai”, `poc_output.md`) |
-| 2026-10-11 | ~10 h (14:00 → ~24:00) | raport audytu `audyt-spark-spark-28e3-20261011-1400.txt`, 21 commitów między 16:44 i 23:57, znaczniki startów modeli i benchmarków w `findings.md` 3.1, 3.4–3.7 | **wysoka** co do rozpiętości. W tym ~3 h 20 min czekania na pobierania (17:24–17:57), starty vLLM (zestaw B 10–15 min, gpt-oss ~8 min, Gemma 3 min, dwa przełączenia zestawów) i trzy benchmarki — praca nadzorowana, nie bezczynność |
-| **Razem** | **13–15 h** | | |
-
-Zakres prac obu dni: audyt maszyny przy przejęciu, konto i bootstrap hosta, pobranie modeli, uruchomienie zestawów B i A, diagnoza dwóch znalezisk blokujących start (`findings.md` 3.2, 3.3), pomiary pamięci i wydajności czterech modeli, Open WebUI, test tematyczny, złożenie repozytorium i dokumentacji (findings, decisions, backlog).
