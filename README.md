@@ -49,17 +49,21 @@ Na Macu (przez tunel): `curl localhost:8000/v1/models`, OpenCode z `clients/open
 
 ## Zestawy
 
-| SET | Modele | Do pobrania | Stan |
-|---|---|---|---|
-| `c` | Qwen3.6-35B-A3B (FP8) + bge-m3 | ~40 GB | start; do sprawdzenia całego łańcucha |
-| `b` | Qwen3.6-35B-A3B :8000 + Qwen3.8-27B :8002 + Qwen3-Coder-Next :8003 (wszystkie NVFP4) + bge-m3 | ~90 GB | uniwersalny: czat, jakość/SQL, kod naraz; nieprzetestowany |
-| `a` | gpt-oss-120b + Qwen3.8-27B (FP8) + bge-m3 | ~96 GB | porównanie modeli dla SOFA; nieprzetestowany |
-| `d` | Qwen3-Coder-Next (FP8) + bge-m3 | ~82 GB | asystent kodu; nieprzetestowany |
+| SET | Porty i modele | Pamięć (suma) | Kiedy | Stan |
+|---|---|---|---|---|
+| `b` | :8000 Qwen3.6-35B-A3B + :8002 Qwen3.8-27B (NVFP4) + :8001 bge-m3 | 0.58 | praca nad SOFA, testy z analitykami | 8000 i 8001 zweryfikowane; 8002 po korekcie przydziału |
+| `d` | :8003 Qwen3-Coder-Next + :8000 Qwen3.6-35B-A3B (NVFP4) + :8001 bge-m3 | 0.72 | praca z kodem (OpenCode na Macu przez tunel) | Coder-Next niezmierzony |
+| `a` | :8000 gpt-oss-120b + :8001 bge-m3 | 0.69 | porównanie z zestawem B (przełączenie + ten sam test) | niezmierzony |
+| `c` | :8000 Qwen3.6-35B-A3B (FP8) + :8001 bge-m3 | 0.61 | lekki start | niezmierzony |
 
-W zestawach z kilkoma modelami usługi startują po kolei (`vllm-8000` → `vllm-8002` → `vllm-8003`), żeby nie
-walczyły o pamięć. Pełny start zestawu B może trwać kilkanaście minut.
+Trzy duże modele naraz się nie mieszczą: każda instancja potrzebuje wagi + ok. 5–8 GiB
+(grafy CUDA, bufory profilowania) + cache kontekstu. Zmierzone 2026-10-11: Qwen3.6 NVFP4 wagi
+19,6 GiB, Qwen3.8 NVFP4 wagi 19,1 GiB (przy przydziale 0.20 zabrakło 3 GiB na cache).
 
-Zmiana zestawu: `make down && make models SET=a && make up SET=a`.
+Usługi startują po kolei (`vllm-8000` → `embed-8001` → `vllm-8002` / `vllm-8003`), żeby nie
+walczyły o pamięć. Pełny start zestawu trwa ok. 5–10 minut.
+
+Zmiana zestawu (np. SOFA → kod): `make down && make up SET=d`. Nowy zestaw najpierw `make models SET=x`.
 
 Pamięć: `*_GPU_MEM` to ułamek całej pamięci zunifikowanej (~119 GiB), który każda instancja
 vLLM rezerwuje z góry. Suma w zestawie powinna zostać poniżej ~0.85–0.9. Przy błędzie OOM

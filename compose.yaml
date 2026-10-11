@@ -55,14 +55,17 @@ services:
         --enable-prefix-caching
         ${LLM_EXTRA_ARGS:-}
 
-  # Drugi model (np. do porównań) — http://localhost:8002/v1
+  # Drugi model (zestaw B: Qwen3.8-27B) — http://localhost:8002/v1
   vllm-8002:
     <<: *vllm
     container_name: spark-8002-${LLM2_NAME:-llm2}
     profiles: ["vllm-8002"]
-    depends_on:
+    depends_on:                      # start po kolei, żeby instancje nie walczyły o pamięć
       vllm-8000:
-        condition: service_healthy   # start po pierwszym, żeby nie walczyły o pamięć
+        condition: service_healthy
+      embed-8001:
+        condition: service_healthy
+        required: false
     ports:
       - "127.0.0.1:8002:8000"
     command:
@@ -76,14 +79,17 @@ services:
         --enable-prefix-caching
         ${LLM2_EXTRA_ARGS:-}
 
-  # Trzeci model (zestaw B: Qwen3-Coder-Next) — http://localhost:8003/v1
+  # Model do kodu (zestaw D: Qwen3-Coder-Next) — http://localhost:8003/v1
   vllm-8003:
     <<: *vllm
     container_name: spark-8003-${LLM3_NAME:-llm3}
     profiles: ["vllm-8003"]
-    depends_on:
-      vllm-8002:
-        condition: service_healthy   # start po kolei: 8000 -> 8002 -> 8003
+    depends_on:                      # start po kolei: 8000 -> 8001 -> 8003
+      vllm-8000:
+        condition: service_healthy
+      embed-8001:
+        condition: service_healthy
+        required: false
     ports:
       - "127.0.0.1:8003:8000"
     command:
