@@ -53,15 +53,15 @@ up-ui: env ## Jak up, plus Open WebUI na :8080
 
 down: ## Zatrzymanie wszystkich usług
 	@test -f .run.env || python3 scripts/render_env.py $(SET)
-	COMPOSE_PROFILES=embed,llm2,ui $(COMPOSE) down
+	COMPOSE_PROFILES=embed,llm2,llm3,ui $(COMPOSE) down
 
 restart: down up ## Restart (np. po zmianie profilu)
 
 logs: ## Logi usług (Ctrl+C kończy podgląd)
-	COMPOSE_PROFILES=embed,llm2,ui $(COMPOSE) logs -f --tail=100
+	COMPOSE_PROFILES=embed,llm2,llm3,ui $(COMPOSE) logs -f --tail=100
 
 ps: ## Stan kontenerów
-	COMPOSE_PROFILES=embed,llm2,ui $(COMPOSE) ps
+	COMPOSE_PROFILES=embed,llm2,llm3,ui $(COMPOSE) ps
 
 test: ## Szybki test API: lista modeli + krótka odpowiedź
 	@curl -sf localhost:8000/v1/models | python3 -m json.tool

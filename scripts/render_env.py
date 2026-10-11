@@ -16,7 +16,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
-ROLES = ("LLM", "LLM2", "EMBED")
+ROLES = ("LLM", "LLM2", "LLM3", "EMBED")
 
 
 def read_env(path: Path) -> dict[str, str]:

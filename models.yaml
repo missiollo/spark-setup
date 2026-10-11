@@ -23,7 +23,7 @@ models:
     size_gb: 2.3
     role: embeddingi (RAG)
     license: mit
-    sets: [c, a, d]
+    sets: [c, a, b, d]
     ignore: ["*.onnx", "onnx/*", "imgs/*"]
 
   - id: gpt-oss-120b
@@ -54,3 +54,31 @@ models:
     sets: [d]
     variants:
       mac: lmstudio-community/Qwen3-Coder-Next-MLX-4bit
+
+  # --- Warianty NVFP4 (4-bit, sprzętowo na Blackwellu) — zestaw B
+  - id: qwen3.6-35b-a3b-nvfp4
+    repo: nvidia/Qwen3.6-35B-A3B-NVFP4
+    revision: main
+    size_gb: 22
+    role: szybki czat, agent, routing (domyślny model zestawu B)
+    license: apache-2.0
+    sets: [b]
+
+  - id: qwen3.8-27b-nvfp4
+    repo: nvidia/Qwen3.8-27B-NVFP4      # MLP w NVFP4, warstwy uwagi w FP8
+    revision: main
+    size_gb: 21
+    role: text-to-SQL, ocena jakości wymagań (PL)
+    license: apache-2.0
+    sets: [b]
+
+  - id: qwen3-coder-next-nvfp4
+    repo: RedHatAI/Qwen3-Coder-Next-NVFP4
+    revision: main
+    size_gb: 46
+    role: asystent kodu (OpenCode)
+    license: apache-2.0
+    sets: [b]
+    variants:
+      spark_gb10: saricles/Qwen3-Coder-Next-NVFP4-GB10   # warstwy dobrane pod GB10; alternatywa przy problemach
+

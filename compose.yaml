@@ -74,6 +74,27 @@ services:
         --enable-prefix-caching
         ${LLM2_EXTRA_ARGS:-}
 
+  # Trzeci model (zestaw B: Qwen3-Coder-Next) — http://localhost:8003/v1
+  llm3:
+    <<: *vllm
+    container_name: spark-llm3
+    profiles: ["llm3"]
+    depends_on:
+      llm2:
+        condition: service_healthy   # start po kolei: llm -> llm2 -> llm3
+    ports:
+      - "127.0.0.1:8003:8000"
+    command:
+      - >-
+        exec vllm serve ${LLM3_REPO:-}
+        --revision ${LLM3_REVISION:-main}
+        --served-model-name ${LLM3_NAME:-llm3}
+        --host 0.0.0.0 --port 8000
+        --gpu-memory-utilization ${LLM3_GPU_MEM:-0.4}
+        --max-model-len ${LLM3_MAX_LEN:-32768}
+        --enable-prefix-caching
+        ${LLM3_EXTRA_ARGS:-}
+
   # Embeddingi — http://localhost:8001/v1/embeddings
   embed:
     <<: *vllm
