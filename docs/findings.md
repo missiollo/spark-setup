@@ -186,7 +186,7 @@ suma przydziałów w zestawie ≤ ~0.85 (reszta dla systemu, Open WebUI i konten
 1.0 przydziału = 121,69 GiB (pamięć widziana przez vLLM)
 ```
 
-### 3.4 Pomiary wydajności zestawu B — modele Qwen (2026-10-11)
+### 3.4 Pomiary wydajności zestawu B (2026-10-11)
 
 Narzędzie: `bench/run_bench.py` (`make bench`), uruchomione na Sparku; prompt syntetyczny w formacie elementów EA, odpowiedź do 256 tokenów, bez trybu rozumowania. Dla każdej długości dwa zapytania: `cold` (unikalny początek promptu, pełny prefill) i `warm` (ten sam prompt drugi raz, prefix cache). Długości promptu wg serwera. Wyniki JSON w `bench/results/` (repozytorium `spark-setup`).
 
@@ -206,6 +206,16 @@ Qwen3.8-27B NVFP4 (:8002, dense, 27 mld aktywnych):
 | 6 241 | 2,60 | 0,74 | 12,8 |
 | 25 142 | 11,99 | 0,22 | 12,4 |
 
+Gemma 4 26B-A4B NVFP4 (:8004, MoE, ~4 mld aktywnych; pomiar 22:18, `bench/results/20261011-2218-dgx-spark-gemma-4-26b-a4b-nvfp4.json`):
+
+| Prompt [tok] | TTFT cold [s] | TTFT warm [s] | Decode [tok/s] |
+|---|---|---|---|
+| 1 591 | 0,24 | 0,09 | 30,5 |
+| 6 241 | 0,93 | 0,08 | 30,3 |
+| 25 141 | 4,40 | 0,12 | 28,8 |
+
+Gemma ma najszybszy prefill w zestawie B (~5 700–6 700 tok/s, TTFT 25k bez cache 4,4 s) i dekoduje 2,4× szybciej niż Qwen3.8, ale 2,6× wolniej niż Qwen3.6. Decode warm (prefix cache): 31,1 / 30,7 / 29,5 tok/s — różnica wobec cold w granicach pomiaru.
+
 ### 3.5 Pomiary zestawu A — gpt-oss-120b (2026-10-11)
 
 Pamięć (przydział 0.66 ≈ 80,3 GiB): wagi **66,14 GiB** (szacowano ~61), grafy CUDA 3,17 GiB (`max-num-seqs 32`), cache **7,0 GiB**; wczytanie wag 443 s (7,4 min).
@@ -218,23 +228,23 @@ Pamięć (przydział 0.66 ≈ 80,3 GiB): wagi **66,14 GiB** (szacowano ~61), gra
 
 Wynik JSON: `bench/results/…-dgx-spark-gpt-oss-120b.json`.
 
-Porównanie trzech modeli (jeden użytkownik):
+Porównanie czterech modeli (jeden użytkownik):
 
-| Miara | Qwen3.6-35B-A3B | gpt-oss-120b | Qwen3.8-27B |
-|---|---|---|---|
-| Wagi w pamięci | 19,6 GiB | 66,1 GiB | 19,1 GiB |
-| Decode (1,6k → ~24k) | 79 → 71 tok/s | 39 → 34 tok/s | 12,6 → 12,4 tok/s |
-| Prefill [tok/s] (6–25k) | ~4 900–5 800 | ~4 000–4 300 | ~2 100–2 400 |
-| TTFT ~24–25k bez cache | 5,1 s | 5,9 s | 12,0 s |
-| TTFT z prefix cache | 0,26–0,55 s | 0,15–0,19 s | 0,17–0,74 s |
-| Efektywne TFLOPS prefillu | ~30–35 | ~41–44 | ~113–130 |
-| Decode / sufit przepustowości (273 GB/s ÷ aktywne wagi) | ~55% | ~42% (szacowano ~90 tok/s) | ~90% |
+| Miara | Qwen3.6-35B-A3B | gpt-oss-120b | Gemma 4 26B-A4B | Qwen3.8-27B |
+|---|---|---|---|---|
+| Wagi w pamięci | 19,6 GiB | 66,1 GiB | 17,1 GiB | 19,1 GiB |
+| Decode (1,6k → ~24k) | 79 → 71 tok/s | 39 → 34 tok/s | 30,5 → 28,8 tok/s | 12,6 → 12,4 tok/s |
+| Prefill [tok/s] (6–25k) | ~4 900–5 800 | ~4 000–4 300 | ~5 700–6 700 | ~2 100–2 400 |
+| TTFT ~24–25k bez cache | 5,1 s | 5,9 s | 4,4 s | 12,0 s |
+| TTFT z prefix cache | 0,26–0,55 s | 0,15–0,19 s | 0,08–0,12 s | 0,17–0,74 s |
+| Efektywne TFLOPS prefillu | ~30–35 | ~41–44 | ~46–54 | ~113–130 |
+| Decode / sufit przepustowości (273 GB/s ÷ aktywne wagi) | ~55% | ~42% (szacowano ~90 tok/s) | ~32% (szacunek: aktywne wagi ~2,8 GB) | ~90% |
 
 Wnioski:
-- Efektywna moc obliczeniowa zależy od modelu i kerneli: gęsty Qwen3.8 w NVFP4 wykorzystuje Blackwella najlepiej (~110–130 TFLOPS), modele MoE znacznie słabiej (~30–45 TFLOPS). Symulator (`context/rag-ea-symulator.html`) zakłada jedną wartość 80 TFLOPS — do zamiany na wartości zależne od modelu.
+- Efektywna moc obliczeniowa zależy od modelu i kerneli: gęsty Qwen3.8 w NVFP4 wykorzystuje Blackwella najlepiej (~110–130 TFLOPS), modele MoE znacznie słabiej (~30–55 TFLOPS). Symulator (`context/rag-ea-symulator.html`) zakłada jedną wartość 80 TFLOPS — do zamiany na wartości zależne od modelu.
 - gpt-oss-120b generuje o połowę wolniej, niż zakładano (38 zamiast ~90 tok/s; kernele MoE MXFP4 w tej wersji vLLM na GB10), zajmuje 3,4× więcej pamięci niż Qwen3.6 i jest wolniejszy w obu fazach. Jego przewagą może być wyłącznie jakość (tool calling, rozumowanie, brak ograniczeń tematycznych Qwena, 3.6) — rozstrzygnie zestaw testowy SOFA.
 - Qwen3.8 dekoduje blisko sufitu przepustowości pamięci (~90%); odpowiedź 400 tokenów to ~32 s, 1000 tokenów rozumowania ~80 s — do zadań wsadowych i SQL, nie do czatu.
-- RAG ~25k tokenów: TTFT 5–12 s bez cache dla wszystkich modeli — poniżej proponowanego kryterium 15 s dla jednego użytkownika; z prefix cache poniżej 1 s. Kolejność sekcji promptu (stałe na początku, `context/sofa-obserwacje.md` sekcja 8) ma bardzo duży wpływ.
+- RAG ~25k tokenów: TTFT 4–12 s bez cache dla wszystkich modeli — poniżej proponowanego kryterium 15 s dla jednego użytkownika; z prefix cache poniżej 1 s. Kolejność sekcji promptu (stałe na początku, `context/sofa-obserwacje.md` sekcja 8) ma bardzo duży wpływ.
 - Pomiar dotyczy jednego użytkownika; zachowanie pod obciążeniem wymaga testu współbieżności (6.5).
 
 ### 3.6 Znalezisko 3: modele Qwen unikają tematów politycznie drażliwych w Chinach; Gemma 4 jako model ogólny (2026-10-11)
@@ -249,7 +259,9 @@ Decyzja: do zestawu B dodano **Gemma 4 26B-A4B NVFP4** (`nvidia/Gemma-4-26B-A4B-
 
 Pomiar (start 22:13–22:16): checkpoint 17,50 GiB, wagi w pamięci **17,08 GiB** (wczytanie 116 s), grafy CUDA 0,20 GiB, cache **12,77 GiB** przy przydziale 0.24. Gemma ma najwięcej miejsca na kontekst w zestawie przy najmniejszym przydziale — przydział można obniżyć do ~0.20 (`backlog.md`). W trakcie wczytywania Gemmy wolna pamięć systemu spadła do ~14,7 GiB — zestaw B z trzema modelami (suma 0.82) jest blisko granicy.
 
-Do zrobienia: test pytania o Chiny na Gemmie; benchmark `python3 bench/run_bench.py --base-url http://localhost:8004/v1`.
+Wydajność zmierzona 2026-10-11 (3.4): decode 28,8–31,1 tok/s, TTFT 25k bez cache 4,4 s, z prefix cache 0,08–0,12 s — najszybszy prefill w zestawie B. Pod rozmowę interaktywną nadaje się lepiej niż Qwen3.8 (12,4 tok/s).
+
+Do zrobienia: test pytania o Chiny na Gemmie.
 
 ### 3.7 Czas startu modeli w vLLM (2026-10-11)
 
@@ -404,7 +416,7 @@ Pamięć: vLLM widzi 121,69 GiB; w praktyce suma przydziałów ≤ ~0.85 (sekcja
 |---|---|---|---|---|---|
 | Qwen3.6-35B-A3B NVFP4 | MoE, 3 mld aktywnych, uwaga hybrydowa | **19,55 GiB** | **71–79 tok/s** | Apache 2.0 | szybki czat, agent, routing |
 | Qwen3.8-27B NVFP4 | dense, uwaga hybrydowa | **19,08 GiB** | **12,4–13,0 tok/s** | Apache 2.0 (wg HF) | text-to-SQL, ocena wymagań (PL) |
-| Gemma 4 26B-A4B NVFP4 | MoE, ~4 mld aktywnych | **17,08 GiB** | niezmierzony | Apache 2.0 | model ogólny spoza Qwena (tematy pomijane przez Qwen) |
+| Gemma 4 26B-A4B NVFP4 | MoE, ~4 mld aktywnych | **17,08 GiB** | **28,8–31,1 tok/s** | Apache 2.0 | model ogólny spoza Qwena (tematy pomijane przez Qwen) |
 | gpt-oss-120b (MXFP4) | MoE, 5,1 mld aktywnych | **66,14 GiB** | **34–39 tok/s** | Apache 2.0 | porównanie z Qwen (jakość, tool calling) |
 | Qwen3-Coder-Next NVFP4 | MoE, 3 mld aktywnych, uwaga hybrydowa | ~43 GiB (wg autora wariantu GB10) | niezmierzony | Apache 2.0 (wg HF) | agent programistyczny (OpenCode) |
 | bge-m3 | embedding | **1,06 GiB** | — | MIT | RAG |
@@ -432,7 +444,7 @@ Niezalecane: Qwen3-Coder-Next obok dwóch innych dużych modeli (3.3); gpt-oss-1
 |---|---|---|---|
 | Czat interaktywny, routing, tool calling | Qwen3.6-35B-A3B | B, D | ~79 tok/s, TTFT RAG 25k ~5 s (3.4) |
 | Text-to-SQL, ocena jakości wymagań (PL) | Qwen3.8-27B | B | ~12,6 tok/s — zadania, gdzie jakość ważniejsza niż czas |
-| Tematy pomijane przez Qwen, drugi punkt widzenia | Gemma 4 26B-A4B | B | 3.6 |
+| Tematy pomijane przez Qwen, drugi punkt widzenia | Gemma 4 26B-A4B | B | ~30 tok/s, TTFT RAG 25k ~4,4 s (3.4); powód dodania: 3.6 |
 | Porównanie z innym dostawcą modelu | gpt-oss-120b | A | ten sam zestaw testowy co B; 2× wolniejszy od Qwen3.6 (3.5) |
 | Agent programistyczny (OpenCode) | Qwen3-Coder-Next | D | OpenCode na Macu, model na Sparku; `small_model` = Qwen3.6 |
 | Embeddingi | bge-m3; docelowo Qwen3-Embedding | wszystkie | — |

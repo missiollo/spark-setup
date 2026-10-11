@@ -6,16 +6,14 @@ Jedno miejsce na to, co zostało do zrobienia. Szczegóły i uzasadnienia: [`fin
 
 - Spark: konto `michal`, klucz SSH, `/data/hf`, wszystkie modele pobrane, obraz vLLM `nvcr.io/nvidia/vllm:26.09-py3`.
 - Działa zestaw B: :8000 Qwen3.6, :8002 Qwen3.8, :8004 Gemma 4, :8001 bge-m3, Open WebUI :8080 (Gemma dodana w panelu ręcznie).
-- Zmierzone: Qwen3.6, Qwen3.8 (`make bench`), gpt-oss-120b (zestaw A); Gemma tylko pamięć i start.
+- Zmierzone (`make bench`): Qwen3.6, Qwen3.8, Gemma 4 (zestaw B), gpt-oss-120b (zestaw A); wyniki JSON w `bench/results/` zacommitowane, liczby w `findings.md` 3.4–3.6.
 - Dostęp z Maca wyłącznie przez tunel `ssh -N spark` (porty 8000–8004, 8080).
 
 ## Najbliższe drobne kroki
 
 | Zadanie | Polecenie / uwagi |
 |---|---|
-| Benchmark Gemmy | na Sparku: `python3 bench/run_bench.py --base-url http://localhost:8004/v1 --out bench/results`; wynik do `findings.md` 3.6 i 5.1 |
 | Test pytania o Chiny na Gemmie | Open WebUI; wynik do `findings.md` 3.6 |
-| Zacommitować wyniki benchmarków | `git add bench/results && git commit` na Sparku, potem `git push` (przez `ssh -A spark`) |
 | Lokalna zmiana `--safetensors-load-strategy=prefetch` w `profiles/set-b.env` na Sparku | cofnąć: `git checkout profiles/set-b.env` (brak zysku, `findings.md` 3.7) |
 | Komentarz w `profiles/set-b.env` przy Gemmie („NIEZMIERZONE”) | zaktualizować o pomiar: wagi 17,08 GiB, cache 12,77 GiB przy 0.24 |
 | `poc_output.md` w projekcie claude.ai | oznaczyć jako archiwum, wskazać repo jako źródło prawdy |
@@ -30,7 +28,7 @@ Jedno miejsce na to, co zostało do zrobienia. Szczegóły i uzasadnienia: [`fin
 | 4 | Zweryfikować zestaw B (`make status`, `make errors`, tunel z Maca, `make bench`) | zrobione (`findings.md` 3.3, 3.4) |
 | 5 | Zestaw A: pamięć i wydajność gpt-oss-120b | zrobione (`findings.md` 3.5) |
 | 6 | Open WebUI | zrobione (`findings.md` 3.8) |
-| 7 | Gemma 4 w zestawie B: start i pamięć | zrobione (`findings.md` 3.6); test pytania o Chiny i benchmark do zrobienia |
+| 7 | Gemma 4 w zestawie B: start, pamięć i wydajność | zrobione (`findings.md` 3.6, pomiary 3.4); test pytania o Chiny do zrobienia |
 | 8 | Zaktualizować symulator: efektywne TFLOPS i decode zależne od modelu (`findings.md` 3.5) | do zrobienia |
 | 9 | Uruchomić zestaw D, podłączyć OpenCode na Macu, zmierzyć pamięć i wydajność Coder-Next | do zrobienia |
 | 10 | Potwierdzić licencje Qwen3.8 i Qwen3-Coder-Next w plikach LICENSE (tagi HF: Apache 2.0) | do zrobienia |
@@ -57,5 +55,5 @@ Zmiany zidentyfikowane, celowo jeszcze niewprowadzone. Numeracja B* jest stała 
 | B9 | Open WebUI | Przypięcie wersji obrazu zamiast `:main`; nazwy i opisy modeli; embeddingi dokumentów przez bge-m3 (`http://embed-8001:8000/v1`); wariant modelu bez trybu myślenia do prostych pytań; po teście: modele publiczne, rejestracja z zatwierdzaniem | wygoda i powtarzalność; przygotowanie pod analityków | niski |
 | B10 | Sposób pracy | Przeniesienie pracy do repozytorium i Cursor / Claude Code: `docs/` (findings, decisions, backlog, context), `AGENTS.md` + `CLAUDE.md`, komenda `/finding` | dokumentacja obok kodu, wersjonowana, dostępna agentowi | **zrobione 2026-10-11** (commit „Move findings, decisions and backlog into the repo”); do zrobienia: oznaczyć `poc_output.md` w projekcie claude.ai jako archiwum |
 | B11 | bench | Test współbieżności (1–32 równoczesnych zapytań) i profil `set-analysts` | `findings.md` 6.5 | wysoki przed testami z analitykami |
-| B12 | symulator (`docs/context/rag-ea-symulator.html`) | Efektywne TFLOPS i decode zależne od modelu (MoE ~30–45, dense ~110–130 TFLOPS; decode zmierzony) | `findings.md` 3.5 | średni |
+| B12 | symulator (`docs/context/rag-ea-symulator.html`) | Efektywne TFLOPS i decode zależne od modelu (MoE ~30–55, dense ~110–130 TFLOPS; decode zmierzony) | `findings.md` 3.5 | średni |
 | B13 | modele | `make pin` — przypięcie rewizji wszystkich modeli z działających zestawów | odtwarzalność po resecie | średni |
