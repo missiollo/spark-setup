@@ -1,3 +1,4 @@
 # Klucze publiczne z dostępem SSH do Sparka (jeden na linię).
 # Na Macu: cat ~/.ssh/id_ed25519.pub  -> wklej poniżej i zacommituj.
 # Klucz PUBLICZNY można trzymać w gicie; prywatnego nigdy.
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEh0+EOk4eKOEc3Qk9BO13AF5c/Cl2L8bw9XlB3RNW45 michal.mariak@gmail.com
