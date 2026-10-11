@@ -1,5 +1,5 @@
 # Usługi inferencji na DGX Spark.
-# Nazwy usług = port na hoście (vllm-8000, embed-8001, vllm-8002, vllm-8003);
+# Nazwy usług = port na hoście (vllm-8000, embed-8001, vllm-8002, vllm-8003, vllm-8004);
 # nazwy kontenerów = spark-<port>-<model>, np. spark-8000-qwen3.6-35b-a3b-nvfp4.
 # Nie uruchamiaj bezpośrednio — używaj `make up SET=c` (składa .run.env z
 # .env + profiles/set-<SET>.env + models.yaml).
@@ -103,6 +103,33 @@ services:
         --enable-prefix-caching
         ${LLM3_EXTRA_ARGS:-}
 
+  # Model ogólny spoza rodziny Qwen (zestaw B: Gemma 4 26B-A4B) — http://localhost:8004/v1
+  vllm-8004:
+    <<: *vllm
+    container_name: spark-8004-${LLM4_NAME:-llm4}
+    profiles: ["vllm-8004"]
+    depends_on:                      # start po kolei: 8000 -> 8001 -> 8002 -> 8004
+      vllm-8000:
+        condition: service_healthy
+      embed-8001:
+        condition: service_healthy
+        required: false
+      vllm-8002:
+        condition: service_healthy
+        required: false
+    ports:
+      - "127.0.0.1:8004:8000"
+    command:
+      - >-
+        exec vllm serve ${LLM4_REPO:-}
+        --revision ${LLM4_REVISION:-main}
+        --served-model-name ${LLM4_NAME:-llm4}
+        --host 0.0.0.0 --port 8000
+        --gpu-memory-utilization ${LLM4_GPU_MEM:-0.2}
+        --max-model-len ${LLM4_MAX_LEN:-32768}
+        --enable-prefix-caching
+        ${LLM4_EXTRA_ARGS:-}
+
   # Embeddingi — http://localhost:8001/v1/embeddings
   embed-8001:
     <<: *vllm
@@ -138,8 +165,8 @@ services:
       # w ustawieniach jako niedostępne, co nie przeszkadza w pracy.
       # Uwaga: Open WebUI zapisuje połączenia w swojej bazie przy pierwszym starcie;
       # późniejsze zmiany tych zmiennych mogą wymagać edycji w Admin Settings → Connections.
-      OPENAI_API_BASE_URLS: http://vllm-8000:8000/v1;http://vllm-8002:8000/v1;http://vllm-8003:8000/v1
-      OPENAI_API_KEYS: none;none;none
+      OPENAI_API_BASE_URLS: http://vllm-8000:8000/v1;http://vllm-8002:8000/v1;http://vllm-8003:8000/v1;http://vllm-8004:8000/v1
+      OPENAI_API_KEYS: none;none;none;none
       ENABLE_OLLAMA_API: "false"
       TZ: ${TZ:-Europe/Warsaw}
     volumes:

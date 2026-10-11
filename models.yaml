@@ -82,3 +82,12 @@ models:
     variants:
       spark_gb10: saricles/Qwen3-Coder-Next-NVFP4-GB10   # warstwy dobrane pod GB10; alternatywa przy problemach
 
+  # --- Model ogólny spoza rodziny Qwen (zestaw B, port 8004)
+  - id: gemma-4-26b-a4b-nvfp4
+    repo: nvidia/Gemma-4-26B-A4B-NVFP4    # NVFP4 tylko w ekspertach MoE (nvfp4_experts_only)
+    revision: main
+    size_gb: 18                            # szacunek; sprawdzić przy pobieraniu
+    role: rozmowa ogólna, tematy pomijane przez Qwen (np. polityka Chin), drugi punkt widzenia
+    license: apache-2.0
+    sets: [b]
+

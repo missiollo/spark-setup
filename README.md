@@ -40,7 +40,7 @@ Na Macu (przez tunel): `curl localhost:8000/v1/models`, OpenCode z `clients/open
 | `bootstrap.sh` | strefa czasowa, pakiety (w tym avahi dla `.local`), konto, grupy `sudo`/`docker`/`llm`, `/data/hf` i `/data/volumes` z setgid, klucze z `ssh/authorized_keys`, opcjonalnie utwardzenie SSH |
 | `models.yaml` | manifest modeli: repo HF, rewizja, rozmiar, licencja, zestawy, warianty na inne platformy |
 | `profiles/set-*.env` | zestawy: które modele, ile pamięci, długość kontekstu, parsery vLLM |
-| `compose.yaml` | usługi `vllm-8000`, `embed-8001`, `vllm-8002`, `vllm-8003`, `open-webui` (:8080); kontenery `spark-<port>-<model>`; porty tylko na `127.0.0.1` |
+| `compose.yaml` | usługi `vllm-8000`, `embed-8001`, `vllm-8002`, `vllm-8003`, `vllm-8004`, `open-webui` (:8080); kontenery `spark-<port>-<model>`; porty tylko na `127.0.0.1` |
 | `scripts/download_models.py` | pobieranie z manifestu (uruchamiane w kontenerze przez `make models`) |
 | `scripts/render_env.py` | składa `.run.env` z `.env` + profilu + `models.yaml` |
 | `bench/run_bench.py` | TTFT (zimny i z prefix cache) i tok/s; wyniki JSON w `bench/results/` |
@@ -51,16 +51,19 @@ Na Macu (przez tunel): `curl localhost:8000/v1/models`, OpenCode z `clients/open
 
 | SET | Porty i modele | Pamięć (suma) | Kiedy | Stan |
 |---|---|---|---|---|
-| `b` | :8000 Qwen3.6-35B-A3B + :8002 Qwen3.8-27B (NVFP4) + :8001 bge-m3 | 0.58 | praca nad SOFA, testy z analitykami | 8000 i 8001 zweryfikowane; 8002 po korekcie przydziału |
+| `b` | :8000 Qwen3.6-35B-A3B + :8002 Qwen3.8-27B + :8004 Gemma 4 26B-A4B (NVFP4) + :8001 bge-m3 | 0.82 | praca nad SOFA | Qwen zweryfikowane 2026-10-11 (cache 7,85 / 11,71 GiB); Gemma niezmierzona |
 | `d` | :8003 Qwen3-Coder-Next + :8000 Qwen3.6-35B-A3B (NVFP4) + :8001 bge-m3 | 0.72 | praca z kodem (OpenCode na Macu przez tunel) | Coder-Next niezmierzony |
 | `a` | :8000 gpt-oss-120b + :8001 bge-m3 | 0.69 | porównanie z zestawem B (przełączenie + ten sam test) | niezmierzony |
 | `c` | :8000 Qwen3.6-35B-A3B (FP8) + :8001 bge-m3 | 0.61 | lekki start | niezmierzony |
 
-Trzy duże modele naraz się nie mieszczą: każda instancja potrzebuje wagi + ok. 5–8 GiB
+Modele Qwen unikają tematów politycznie drażliwych w Chinach; Gemma 4 (:8004) to model ogólny
+spoza tej rodziny.
+
+Trzy duże modele (~20 GiB+ wag każdy, w tym Coder-Next ~43 GiB) naraz się nie mieszczą: każda instancja potrzebuje wagi + ok. 5–8 GiB
 (grafy CUDA, bufory profilowania) + cache kontekstu. Zmierzone 2026-10-11: Qwen3.6 NVFP4 wagi
 19,6 GiB, Qwen3.8 NVFP4 wagi 19,1 GiB (przy przydziale 0.20 zabrakło 3 GiB na cache).
 
-Usługi startują po kolei (`vllm-8000` → `embed-8001` → `vllm-8002` / `vllm-8003`), żeby nie
+Usługi startują po kolei (`vllm-8000` → `embed-8001` → `vllm-8002` → `vllm-8004`; `vllm-8003` po `embed-8001`), żeby nie
 walczyły o pamięć. Pełny start zestawu trwa ok. 5–10 minut.
 
 Zmiana zestawu (np. SOFA → kod): `make down && make up SET=d`. Nowy zestaw najpierw `make models SET=x`.

@@ -9,7 +9,7 @@ HF_HOME_HOST ?= /data/hf
 PY_IMAGE := python:3.12-slim
 
 COMPOSE  = docker compose --env-file .run.env
-ALL_PROFILES = embed-8001,vllm-8002,vllm-8003,ui
+ALL_PROFILES = embed-8001,vllm-8002,vllm-8003,vllm-8004,ui
 PROFILES = $(shell grep -E '^COMPOSE_PROFILES=' .run.env 2>/dev/null | cut -d= -f2)
 
 .PHONY: help bootstrap harden-ssh env models pin list up up-ui down restart logs log status errors ps test bench drop-caches
@@ -64,9 +64,9 @@ logs: ## Logi usług (Ctrl+C kończy podgląd)
 
 status: ## Port -> model -> stan (spark-<port>-<model>)
 	@docker ps -a --filter name='^spark-' --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
-	@echo "Logi jednego modelu: make log P=8000   (8001 embeddingi, 8002, 8003)"
+	@echo "Logi jednego modelu: make log P=8000   (8001 embeddingi, 8002, 8003, 8004)"
 
-log: ## Logi jednego modelu: make log P=8000 (Ctrl+C kończy podgląd)
+log: ## Logi jednego modelu: make log P=8000 (8001 embeddingi, 8002, 8003, 8004; Ctrl+C kończy)
 	@c=$$(docker ps -a --filter name='^spark-$(P)-' --format '{{.Names}}' | head -1); \
 	  if [ -z "$$c" ]; then echo "Brak kontenera dla portu $(P). Sprawdź: make status"; exit 1; fi; \
 	  echo "== $$c"; docker logs -f --tail=100 $$c

@@ -26,6 +26,14 @@
       "models": {
         "qwen3.8-27b-nvfp4": { "name": "Qwen3.8-27B NVFP4" }
       }
+    },
+    "spark-general": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "DGX Spark :8004 (ogólny, zestaw B)",
+      "options": { "baseURL": "http://localhost:8004/v1", "apiKey": "none" },
+      "models": {
+        "gemma-4-26b-a4b-nvfp4": { "name": "Gemma 4 26B-A4B NVFP4" }
+      }
     }
   },
   "model": "spark-coder/qwen3-coder-next-nvfp4",
