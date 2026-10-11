@@ -1,0 +1,113 @@
+# Usługi inferencji na DGX Spark.
+# Nie uruchamiaj bezpośrednio — używaj `make up SET=c` (składa .run.env z
+# .env + profiles/set-<SET>.env + models.yaml).
+#
+# Wszystkie porty są wystawione tylko na 127.0.0.1 hosta: dostęp z Maca
+# przez tunel SSH (ssh/config.example), z sieci niewidoczne.
+
+name: spark
+
+x-vllm: &vllm
+  image: ${VLLM_IMAGE:-nvcr.io/nvidia/vllm:26.09-py3}
+  ipc: host
+  ulimits:
+    memlock: -1
+    stack: 67108864
+  restart: unless-stopped
+  environment:
+    HF_HOME: /data/hf
+    HF_HUB_OFFLINE: "1"          # tylko lokalny cache; pobieranie robi `make models`
+    TZ: ${TZ:-Europe/Warsaw}
+  volumes:
+    - ${HF_HOME_HOST:-/data/hf}:/data/hf
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+  entrypoint: ["bash", "-c"]
+  healthcheck:
+    test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"]
+    interval: 30s
+    timeout: 10s
+    retries: 5
+    start_period: 20m           # ładowanie wag i kompilacja mogą trwać kilka–kilkanaście minut
+
+services:
+  # Model główny — API zgodne z OpenAI: http://localhost:8000/v1
+  llm:
+    <<: *vllm
+    container_name: spark-llm
+    ports:
+      - "127.0.0.1:8000:8000"
+    command:
+      - >-
+        exec vllm serve ${LLM_REPO:?uruchom przez make up SET=...}
+        --revision ${LLM_REVISION:-main}
+        --served-model-name ${LLM_NAME:-llm}
+        --host 0.0.0.0 --port 8000
+        --gpu-memory-utilization ${LLM_GPU_MEM:-0.5}
+        --max-model-len ${LLM_MAX_LEN:-32768}
+        --enable-prefix-caching
+        ${LLM_EXTRA_ARGS:-}
+
+  # Drugi model (np. do porównań) — http://localhost:8002/v1
+  llm2:
+    <<: *vllm
+    container_name: spark-llm2
+    profiles: ["llm2"]
+    depends_on:
+      llm:
+        condition: service_healthy   # start po pierwszym, żeby nie walczyły o pamięć
+    ports:
+      - "127.0.0.1:8002:8000"
+    command:
+      - >-
+        exec vllm serve ${LLM2_REPO:-}
+        --revision ${LLM2_REVISION:-main}
+        --served-model-name ${LLM2_NAME:-llm2}
+        --host 0.0.0.0 --port 8000
+        --gpu-memory-utilization ${LLM2_GPU_MEM:-0.25}
+        --max-model-len ${LLM2_MAX_LEN:-32768}
+        --enable-prefix-caching
+        ${LLM2_EXTRA_ARGS:-}
+
+  # Embeddingi — http://localhost:8001/v1/embeddings
+  embed:
+    <<: *vllm
+    container_name: spark-embed
+    profiles: ["embed"]
+    depends_on:
+      llm:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8001:8000"
+    command:
+      - >-
+        exec vllm serve ${EMBED_REPO:-}
+        --revision ${EMBED_REVISION:-main}
+        --served-model-name ${EMBED_NAME:-embed}
+        --host 0.0.0.0 --port 8000
+        --gpu-memory-utilization ${EMBED_GPU_MEM:-0.05}
+        ${EMBED_EXTRA_ARGS:-}
+
+  # Open WebUI — opcjonalnie (`make up-ui`), http://localhost:8080
+  # Docelowo do przeniesienia na serwer aplikacyjny (zmiana OPENAI_API_BASE_URL).
+  open-webui:
+    image: ${OPENWEBUI_IMAGE:-ghcr.io/open-webui/open-webui:main}
+    container_name: spark-open-webui
+    profiles: ["ui"]
+    restart: unless-stopped
+    depends_on:
+      - llm
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      OPENAI_API_BASE_URL: http://llm:8000/v1
+      OPENAI_API_KEY: none
+      ENABLE_OLLAMA_API: "false"
+      TZ: ${TZ:-Europe/Warsaw}
+    volumes:
+      - ${DATA_VOLUMES:-/data/volumes}/open-webui:/app/backend/data

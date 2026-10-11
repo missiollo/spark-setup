@@ -1,0 +1,5 @@
+.env
+.run.env
+*.local
+__pycache__/
+.venv/

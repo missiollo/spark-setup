@@ -1,0 +1,56 @@
+# Manifest modeli. Źródło prawdy dla `make models`.
+#
+# revision: na start "main"; po pierwszym udanym uruchomieniu przypnij SHA
+# (`make pin` wypisze aktualne SHA), żeby po resecie dostać dokładnie te same wagi.
+# sets: zestawy z profiles/set-*.env, do których model należy.
+# size_gb: orientacyjny rozmiar pobrania.
+
+models:
+  - id: qwen3.6-35b-a3b
+    repo: Qwen/Qwen3.6-35B-A3B-FP8
+    revision: main
+    size_gb: 37
+    role: szybki czat, agent, tool calling, OpenCode (lżej)
+    license: apache-2.0
+    sets: [c]
+    variants:
+      mac: unsloth/Qwen3.6-35B-A3B-GGUF          # llama.cpp / LM Studio
+      spark_nvfp4: nvidia/Qwen3.6-35B-A3B-NVFP4   # mniejszy (~22 GB), do porównania
+
+  - id: bge-m3
+    repo: BAAI/bge-m3
+    revision: main
+    size_gb: 2.3
+    role: embeddingi (RAG)
+    license: mit
+    sets: [c, a, d]
+    ignore: ["*.onnx", "onnx/*", "imgs/*"]
+
+  - id: gpt-oss-120b
+    repo: openai/gpt-oss-120b
+    revision: main
+    size_gb: 65
+    role: czat, tool calling, rozumowanie
+    license: apache-2.0
+    sets: [a]
+    ignore: ["original/*", "metal/*"]
+
+  - id: qwen3.8-27b
+    repo: Qwen/Qwen3.8-27B-FP8
+    revision: main
+    size_gb: 29
+    role: text-to-SQL, ocena jakości wymagań (PL)
+    license: apache-2.0   # wg tagów HF; potwierdź w pliku LICENSE repozytorium
+    sets: [a]
+    variants:
+      mac: lmstudio-community/Qwen3.8-27B-MLX-4bit
+
+  - id: qwen3-coder-next
+    repo: Qwen/Qwen3-Coder-Next-FP8
+    revision: main
+    size_gb: 80
+    role: asystent kodu (OpenCode)
+    license: apache-2.0
+    sets: [d]
+    variants:
+      mac: lmstudio-community/Qwen3-Coder-Next-MLX-4bit
