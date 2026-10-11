@@ -1,0 +1,72 @@
+{
+  "timestamp": "2026-10-11T19:27:37",
+  "platform": "dgx-spark",
+  "client_host": "spark-28e3",
+  "client_os": "Linux-6.17.0-1022-nvidia-aarch64-with-glibc2.39",
+  "endpoint": "http://localhost:8002/v1",
+  "model": "qwen3.8-27b-nvfp4",
+  "thinking": false,
+  "max_tokens": 256,
+  "results": [
+    {
+      "prompt_tokens": 1591,
+      "completion_tokens": 34,
+      "ttft_s": 1.439,
+      "decode_s": 2.62,
+      "decode_tok_s": 12.6,
+      "total_s": 4.059,
+      "target_tokens": 1000,
+      "mode": "cold"
+    },
+    {
+      "prompt_tokens": 1591,
+      "completion_tokens": 34,
+      "ttft_s": 0.171,
+      "decode_s": 2.538,
+      "decode_tok_s": 13.0,
+      "total_s": 2.709,
+      "target_tokens": 1000,
+      "mode": "warm"
+    },
+    {
+      "prompt_tokens": 6241,
+      "completion_tokens": 32,
+      "ttft_s": 2.603,
+      "decode_s": 2.417,
+      "decode_tok_s": 12.8,
+      "total_s": 5.02,
+      "target_tokens": 4000,
+      "mode": "cold"
+    },
+    {
+      "prompt_tokens": 6241,
+      "completion_tokens": 32,
+      "ttft_s": 0.738,
+      "decode_s": 2.419,
+      "decode_tok_s": 12.8,
+      "total_s": 3.157,
+      "target_tokens": 4000,
+      "mode": "warm"
+    },
+    {
+      "prompt_tokens": 25142,
+      "completion_tokens": 46,
+      "ttft_s": 11.992,
+      "decode_s": 3.631,
+      "decode_tok_s": 12.4,
+      "total_s": 15.623,
+      "target_tokens": 16000,
+      "mode": "cold"
+    },
+    {
+      "prompt_tokens": 25142,
+      "completion_tokens": 46,
+      "ttft_s": 0.224,
+      "decode_s": 3.628,
+      "decode_tok_s": 12.4,
+      "total_s": 3.852,
+      "target_tokens": 16000,
+      "mode": "warm"
+    }
+  ]
+}
