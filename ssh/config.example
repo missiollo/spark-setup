@@ -21,5 +21,7 @@ Host spark
   LocalForward 8002 127.0.0.1:8002
   # :8003 vLLM, trzeci model (zestaw D: Qwen3-Coder-Next, kod, OpenCode)
   LocalForward 8003 127.0.0.1:8003
+  # :8004 vLLM, model ogólny (zestaw B: Gemma 4 26B-A4B, tematy pomijane przez Qwen)
+  LocalForward 8004 127.0.0.1:8004
   # :8080 Open WebUI, czat w przeglądarce (tylko po make up-ui)
   LocalForward 8080 127.0.0.1:8080
