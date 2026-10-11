@@ -21,6 +21,9 @@ tags: [dgx-spark, recovery, audyt, poc, sofa, vllm, modele, ssh, opencode, open-
 | Pamięć | 128 GB zunifikowanej (CPU + GPU); vLLM widzi 121,69 GiB |
 | Dysk | 3,67 TB, jedna partycja `/` |
 | Architektura | ARM64 (aarch64) |
+| Pobór mocy GPU na biegu jałowym | **10,6 W** (`nvidia-smi`, 2026-10-11 23:51, 0% utylizacji, 43 °C, zestaw B wczytany) |
+
+GB10 nie raportuje `power.limit` ani poboru całego urządzenia (`[N/A]`), więc zużycie z zasilaczem, RAM i SSD jest nieznane — szacunkowo 25–40 W na biegu jałowym. Decyzja o pozostawieniu Sparka włączonego na noc: `backlog.md` B14 (koszt prądu niski wobec 10–15 min startu zestawu; brak Wake-on-LAN).
 
 ## 2. Audyt stanu przy przejęciu (2026-10-11)
 
