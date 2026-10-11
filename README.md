@@ -73,7 +73,7 @@ na starcie: `make drop-caches`, potem mniejsze `*_GPU_MEM` albo `*_MAX_LEN`.
 |---|---|
 | `make models SET=x` | pobranie modeli zestawu |
 | `make pin SET=x` | aktualne SHA rewizji do wklejenia w `models.yaml` |
-| `make up SET=x` / `make up-ui SET=x` | start usług (z Open WebUI) |
+| `make up SET=x` / `make up-ui SET=x` | start usług; `up-ui` dodaje Open WebUI na :8080 (widzi modele z :8000, :8002, :8003) |
 | `make down`, `make logs`, `make ps` | zarządzanie |
 | `make test` | lista modeli i krótka odpowiedź |
 | `make bench` | pomiar, wynik do `bench/results/` (commituj) |
