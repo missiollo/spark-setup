@@ -3,14 +3,16 @@
 # Zestaw modeli wybiera SET (domyślnie c), np.: make models SET=a && make up SET=a
 
 SET     ?= c
+P       ?= 8000
 SHELL   := /bin/bash
 HF_HOME_HOST ?= /data/hf
 PY_IMAGE := python:3.12-slim
 
 COMPOSE  = docker compose --env-file .run.env
+ALL_PROFILES = embed-8001,vllm-8002,vllm-8003,ui
 PROFILES = $(shell grep -E '^COMPOSE_PROFILES=' .run.env 2>/dev/null | cut -d= -f2)
 
-.PHONY: help bootstrap harden-ssh env models pin list up up-ui down restart logs ps test bench drop-caches
+.PHONY: help bootstrap harden-ssh env models pin list up up-ui down restart logs log status errors ps test bench drop-caches
 
 help: ## Lista poleceń
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -45,23 +47,36 @@ list: ## Lista modeli z manifestu
 	@set -a; source .env; set +a; $(call HF_RUN,--list)
 
 up: env ## Uruchomienie usług zestawu SET
-	COMPOSE_PROFILES=$(PROFILES) $(COMPOSE) up -d
+	COMPOSE_PROFILES=$(PROFILES) $(COMPOSE) up -d --remove-orphans
 	@echo "Postęp ładowania: make logs   |   test: make test"
 
 up-ui: env ## Jak up, plus Open WebUI na :8080
-	COMPOSE_PROFILES=$(PROFILES),ui $(COMPOSE) up -d
+	COMPOSE_PROFILES=$(PROFILES),ui $(COMPOSE) up -d --remove-orphans
 
 down: ## Zatrzymanie wszystkich usług
 	@test -f .run.env || python3 scripts/render_env.py $(SET)
-	COMPOSE_PROFILES=embed,llm2,llm3,ui $(COMPOSE) down
+	COMPOSE_PROFILES=$(ALL_PROFILES) $(COMPOSE) down --remove-orphans
 
 restart: down up ## Restart (np. po zmianie profilu)
 
 logs: ## Logi usług (Ctrl+C kończy podgląd)
-	COMPOSE_PROFILES=embed,llm2,llm3,ui $(COMPOSE) logs -f --tail=100
+	COMPOSE_PROFILES=$(ALL_PROFILES) $(COMPOSE) logs -f --tail=100
+
+status: ## Port -> model -> stan (spark-<port>-<model>)
+	@docker ps -a --filter name='^spark-' --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+	@echo "Logi jednego modelu: make log P=8000   (8001 embeddingi, 8002, 8003)"
+
+log: ## Logi jednego modelu: make log P=8000 (Ctrl+C kończy podgląd)
+	@c=$$(docker ps -a --filter name='^spark-$(P)-' --format '{{.Names}}' | head -1); \
+	  if [ -z "$$c" ]; then echo "Brak kontenera dla portu $(P). Sprawdź: make status"; exit 1; fi; \
+	  echo "== $$c"; docker logs -f --tail=100 $$c
+
+errors: ## Błędy z logów wszystkich modeli (bez śledzenia stosu)
+	@for c in $$(docker ps -a --filter name='^spark-' --format '{{.Names}}'); do \
+	  echo "== $$c"; docker logs $$c 2>&1 | grep -E "Error:|ERROR.*\] [A-Z][a-z]+Error|Available KV cache|took .* GiB" | tail -5; done
 
 ps: ## Stan kontenerów
-	COMPOSE_PROFILES=embed,llm2,llm3,ui $(COMPOSE) ps
+	COMPOSE_PROFILES=$(ALL_PROFILES) $(COMPOSE) ps
 
 test: ## Szybki test API: lista modeli + krótka odpowiedź
 	@curl -sf localhost:8000/v1/models | python3 -m json.tool

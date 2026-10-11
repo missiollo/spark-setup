@@ -40,7 +40,7 @@ Na Macu (przez tunel): `curl localhost:8000/v1/models`, OpenCode z `clients/open
 | `bootstrap.sh` | strefa czasowa, pakiety (w tym avahi dla `.local`), konto, grupy `sudo`/`docker`/`llm`, `/data/hf` i `/data/volumes` z setgid, klucze z `ssh/authorized_keys`, opcjonalnie utwardzenie SSH |
 | `models.yaml` | manifest modeli: repo HF, rewizja, rozmiar, licencja, zestawy, warianty na inne platformy |
 | `profiles/set-*.env` | zestawy: które modele, ile pamięci, długość kontekstu, parsery vLLM |
-| `compose.yaml` | usługi `llm` (:8000), `embed` (:8001), `llm2` (:8002), `llm3` (:8003), `open-webui` (:8080); porty tylko na `127.0.0.1` |
+| `compose.yaml` | usługi `vllm-8000`, `embed-8001`, `vllm-8002`, `vllm-8003`, `open-webui` (:8080); kontenery `spark-<port>-<model>`; porty tylko na `127.0.0.1` |
 | `scripts/download_models.py` | pobieranie z manifestu (uruchamiane w kontenerze przez `make models`) |
 | `scripts/render_env.py` | składa `.run.env` z `.env` + profilu + `models.yaml` |
 | `bench/run_bench.py` | TTFT (zimny i z prefix cache) i tok/s; wyniki JSON w `bench/results/` |
@@ -56,7 +56,7 @@ Na Macu (przez tunel): `curl localhost:8000/v1/models`, OpenCode z `clients/open
 | `a` | gpt-oss-120b + Qwen3.8-27B (FP8) + bge-m3 | ~96 GB | porównanie modeli dla SOFA; nieprzetestowany |
 | `d` | Qwen3-Coder-Next (FP8) + bge-m3 | ~82 GB | asystent kodu; nieprzetestowany |
 
-W zestawach z kilkoma modelami usługi startują po kolei (`llm` → `llm2` → `llm3`), żeby nie
+W zestawach z kilkoma modelami usługi startują po kolei (`vllm-8000` → `vllm-8002` → `vllm-8003`), żeby nie
 walczyły o pamięć. Pełny start zestawu B może trwać kilkanaście minut.
 
 Zmiana zestawu: `make down && make models SET=a && make up SET=a`.
@@ -64,6 +64,10 @@ Zmiana zestawu: `make down && make models SET=a && make up SET=a`.
 Pamięć: `*_GPU_MEM` to ułamek całej pamięci zunifikowanej (~119 GiB), który każda instancja
 vLLM rezerwuje z góry. Suma w zestawie powinna zostać poniżej ~0.85–0.9. Przy błędzie OOM
 na starcie: `make drop-caches`, potem mniejsze `*_GPU_MEM` albo `*_MAX_LEN`.
+
+`--max-num-seqs` (w profilach 16, dla gpt-oss 32) ogranicza liczbę równoczesnych zapytań.
+Domyślne 256 nie mieści się przy modelach z warstwami Mamba/DeltaNet (Qwen3.6/3.8/Coder-Next):
+vLLM kończy start błędem `max_num_seqs (256) exceeds available Mamba cache blocks`.
 
 ## Polecenia
 
@@ -74,7 +78,10 @@ na starcie: `make drop-caches`, potem mniejsze `*_GPU_MEM` albo `*_MAX_LEN`.
 | `make models SET=x` | pobranie modeli zestawu |
 | `make pin SET=x` | aktualne SHA rewizji do wklejenia w `models.yaml` |
 | `make up SET=x` / `make up-ui SET=x` | start usług; `up-ui` dodaje Open WebUI na :8080 (widzi modele z :8000, :8002, :8003) |
-| `make down`, `make logs`, `make ps` | zarządzanie |
+| `make status` | port → model → stan |
+| `make log P=8000` | logi jednego modelu (8001 embeddingi, 8002, 8003) |
+| `make errors` | same błędy i zużycie pamięci z logów wszystkich modeli |
+| `make down`, `make logs` | zatrzymanie, logi wszystkich usług |
 | `make test` | lista modeli i krótka odpowiedź |
 | `make bench` | pomiar, wynik do `bench/results/` (commituj) |
 | `make harden-ssh` | tylko klucze, bez roota, tylko twój użytkownik (gdy klucz na pewno działa) |

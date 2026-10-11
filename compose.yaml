@@ -1,4 +1,6 @@
 # Usługi inferencji na DGX Spark.
+# Nazwy usług = port na hoście (vllm-8000, embed-8001, vllm-8002, vllm-8003);
+# nazwy kontenerów = spark-<port>-<model>, np. spark-8000-qwen3.6-35b-a3b-nvfp4.
 # Nie uruchamiaj bezpośrednio — używaj `make up SET=c` (składa .run.env z
 # .env + profiles/set-<SET>.env + models.yaml).
 #
@@ -37,9 +39,9 @@ x-vllm: &vllm
 
 services:
   # Model główny — API zgodne z OpenAI: http://localhost:8000/v1
-  llm:
+  vllm-8000:
     <<: *vllm
-    container_name: spark-llm
+    container_name: spark-8000-${LLM_NAME:-llm}
     ports:
       - "127.0.0.1:8000:8000"
     command:
@@ -54,12 +56,12 @@ services:
         ${LLM_EXTRA_ARGS:-}
 
   # Drugi model (np. do porównań) — http://localhost:8002/v1
-  llm2:
+  vllm-8002:
     <<: *vllm
-    container_name: spark-llm2
-    profiles: ["llm2"]
+    container_name: spark-8002-${LLM2_NAME:-llm2}
+    profiles: ["vllm-8002"]
     depends_on:
-      llm:
+      vllm-8000:
         condition: service_healthy   # start po pierwszym, żeby nie walczyły o pamięć
     ports:
       - "127.0.0.1:8002:8000"
@@ -75,13 +77,13 @@ services:
         ${LLM2_EXTRA_ARGS:-}
 
   # Trzeci model (zestaw B: Qwen3-Coder-Next) — http://localhost:8003/v1
-  llm3:
+  vllm-8003:
     <<: *vllm
-    container_name: spark-llm3
-    profiles: ["llm3"]
+    container_name: spark-8003-${LLM3_NAME:-llm3}
+    profiles: ["vllm-8003"]
     depends_on:
-      llm2:
-        condition: service_healthy   # start po kolei: llm -> llm2 -> llm3
+      vllm-8002:
+        condition: service_healthy   # start po kolei: 8000 -> 8002 -> 8003
     ports:
       - "127.0.0.1:8003:8000"
     command:
@@ -96,12 +98,12 @@ services:
         ${LLM3_EXTRA_ARGS:-}
 
   # Embeddingi — http://localhost:8001/v1/embeddings
-  embed:
+  embed-8001:
     <<: *vllm
-    container_name: spark-embed
-    profiles: ["embed"]
+    container_name: spark-8001-${EMBED_NAME:-embed}
+    profiles: ["embed-8001"]
     depends_on:
-      llm:
+      vllm-8000:
         condition: service_healthy
     ports:
       - "127.0.0.1:8001:8000"
@@ -122,7 +124,7 @@ services:
     profiles: ["ui"]
     restart: unless-stopped
     depends_on:
-      - llm
+      - vllm-8000
     ports:
       - "127.0.0.1:8080:8080"
     environment:
@@ -130,7 +132,7 @@ services:
       # w ustawieniach jako niedostępne, co nie przeszkadza w pracy.
       # Uwaga: Open WebUI zapisuje połączenia w swojej bazie przy pierwszym starcie;
       # późniejsze zmiany tych zmiennych mogą wymagać edycji w Admin Settings → Connections.
-      OPENAI_API_BASE_URLS: http://llm:8000/v1;http://llm2:8000/v1;http://llm3:8000/v1
+      OPENAI_API_BASE_URLS: http://vllm-8000:8000/v1;http://vllm-8002:8000/v1;http://vllm-8003:8000/v1
       OPENAI_API_KEYS: none;none;none
       ENABLE_OLLAMA_API: "false"
       TZ: ${TZ:-Europe/Warsaw}
