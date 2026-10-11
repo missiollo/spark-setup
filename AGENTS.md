@@ -20,7 +20,7 @@ Odtwarzalna konfiguracja NVIDIA DGX Spark do lokalnej inferencji LLM (vLLM w kon
 | Laptop | MacBook Pro M4 Pro 48 GB (zsh); tu działa edytor i OpenCode |
 | Dostęp | wyłącznie SSH; usługi na Sparku tylko na `127.0.0.1`, z Maca przez tunel `ssh -N spark` (porty 8000–8004, 8080) |
 | Modele | `/data/hf` na Sparku (grupa `llm`, setgid); obraz `nvcr.io/nvidia/vllm:26.09-py3` (vLLM 0.29) |
-| Repo | https://github.com/missiollo/spark-setup (prywatne); klon na Macu i na Sparku |
+| Repo | https://github.com/missiollo/spark-setup (prywatne); klon na Macu: `/Users/michalmariak/Documents/Projects/spark-setup`, na Sparku: `~/spark-setup` (`/home/michal/spark-setup`) |
 
 Porty: 8000 model główny, 8001 embeddingi (bge-m3), 8002 Qwen3.8 (zestaw B), 8003 Qwen3-Coder-Next (zestaw D), 8004 Gemma 4 (zestaw B), 8080 Open WebUI.
 
@@ -36,7 +36,7 @@ Porty: 8000 model główny, 8001 embeddingi (bge-m3), 8002 Qwen3.8 (zestaw B), 8
 
 ## Uruchamianie poleceń na Sparku z Maca
 
-`make`, `docker` i `nvidia-smi` działają tylko na Sparku. Z Maca:
+`make`, `docker` i `nvidia-smi` działają tylko na Sparku. Edytor i agent pracują w klonie na Macu; Spark ma osobny klon, zsynchronizowany przez GitHub. Z Maca:
 
 ```bash
 ssh -o ClearAllForwardings=yes spark 'cd ~/spark-setup && make status'
