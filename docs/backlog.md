@@ -13,6 +13,7 @@ Jedno miejsce na to, co zostało do zrobienia. Szczegóły i uzasadnienia: [`fin
 
 | Zadanie | Polecenie / uwagi |
 |---|---|
+| Powtórzyć test tematyczny: oba sformułowania („ile osób zginęło”, „co się wydarzyło”) na :8000, :8002, :8004 i gpt-oss | notować treść pytania razem z odpowiedzią; wynik do `findings.md` 3.6 |
 | Komentarz w `profiles/set-b.env` przy Gemmie („NIEZMIERZONE”) | zaktualizować o pomiar: wagi 17,08 GiB, cache 12,77 GiB przy 0.24 |
 | `poc_output.md` w projekcie claude.ai | oznaczyć jako archiwum, wskazać repo jako źródło prawdy |
 

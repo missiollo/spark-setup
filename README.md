@@ -56,8 +56,8 @@ Na Macu (przez tunel): `curl localhost:8000/v1/models`, OpenCode z `clients/open
 | `a` | :8000 gpt-oss-120b + :8001 bge-m3 | 0.69 | porównanie z zestawem B (przełączenie + ten sam test) | niezmierzony |
 | `c` | :8000 Qwen3.6-35B-A3B (FP8) + :8001 bge-m3 | 0.61 | lekki start | niezmierzony |
 
-Modele Qwen unikają tematów politycznie drażliwych w Chinach; Gemma 4 (:8004) to model ogólny
-spoza tej rodziny.
+Modele Qwen o tematach drażliwych w Chinach mówią tylko ogólnie, bez liczb i źródeł
+(`docs/findings.md` 3.6); Gemma 4 (:8004) to model ogólny spoza tej rodziny.
 
 Trzy duże modele (~20 GiB+ wag każdy, w tym Coder-Next ~43 GiB) naraz się nie mieszczą: każda instancja potrzebuje wagi + ok. 5–8 GiB
 (grafy CUDA, bufory profilowania) + cache kontekstu. Zmierzone 2026-10-11: Qwen3.6 NVFP4 wagi

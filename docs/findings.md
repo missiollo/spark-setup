@@ -247,9 +247,9 @@ Wnioski:
 - RAG ~25k tokenów: TTFT 4–12 s bez cache dla wszystkich modeli — poniżej proponowanego kryterium 15 s dla jednego użytkownika; z prefix cache poniżej 1 s. Kolejność sekcji promptu (stałe na początku, `context/sofa-obserwacje.md` sekcja 8) ma bardzo duży wpływ.
 - Pomiar dotyczy jednego użytkownika; zachowanie pod obciążeniem wymaga testu współbieżności (6.5).
 
-### 3.6 Znalezisko 3: modele Qwen unikają tematów politycznie drażliwych w Chinach; Gemma 4 jako model ogólny (2026-10-11)
+### 3.6 Znalezisko 3: modele Qwen odpowiadają o tematach drażliwych w Chinach tylko ogólnie; Gemma 4 jako model ogólny (2026-10-11)
 
-Obserwacja: Qwen3.6 (Open WebUI) odmówił rozmowy o wydarzeniach politycznych w Chinach. gpt-oss-120b (zestaw A) na to samo pytanie odpowiedział.
+Obserwacja wyjściowa: Qwen3.6 (Open WebUI) odmówił rozmowy o wydarzeniach politycznych w Chinach. gpt-oss-120b (zestaw A) na to samo pytanie odpowiedział. Treści pytania nie zanotowano — test kontrolny poniżej odmowy nie powtórzył.
 
 Wyjaśnienie: modele chińskich producentów (Qwen, Alibaba) mają wytrenowane unikanie tematów drażliwych dla chińskich władz (np. Tiananmen, Tajwan, Ujgurowie); system prompt zwykle tego nie zmienia. To nie jest ogólna „cenzura” — inne tematy, w tym kontrola graniczna czy bezpieczeństwo, przy właściwym kontekście (system prompt opisujący instytucję i zadanie) nie powinny być problemem; do potwierdzenia testem.
 
@@ -261,18 +261,20 @@ Pomiar (start 22:13–22:16): checkpoint 17,50 GiB, wagi w pamięci **17,08 GiB*
 
 Wydajność zmierzona 2026-10-11 (3.4): decode 28,8–31,1 tok/s, TTFT 25k bez cache 4,4 s, z prefix cache 0,08–0,12 s — najszybszy prefill w zestawie B. Pod rozmowę interaktywną nadaje się lepiej niż Qwen3.8 (12,4 tok/s).
 
-Test kontrolny (2026-10-11, Open WebUI, pytanie o liczbę ofiar 4 czerwca 1989 na placu Tiananmen):
+Test kontrolny (2026-10-11, Open WebUI). **Modele dostały dwa różne sformułowania**, więc nie jest to porównanie jeden do jednego:
 
-| Model | Wynik | Uwagi |
+| Pytanie | Model | Wynik |
 |---|---|---|
-| Qwen3.6-35B-A3B (:8000) | **odmowa** | obserwacja wyjściowa tego znaleziska |
-| Gemma 4 26B-A4B (:8004) | **odpowiada** | szacunki wg źródeł: oficjalne chińskie „kilkuset”, Chiński Czerwony Krzyż ~2 600 (dane wycofane pod naciskiem władz), organizacje międzynarodowe i agencje wywiadowcze od kilkuset do ~3 000; zastrzega brak jednej uznanej liczby. Zwięźle, bez odwołań do literatury |
-| gpt-oss-120b (zestaw A) | **odpowiada** | tabela szacunków wg źródeł (oficjalne 200–300, Czerwony Krzyż ~2 700, organizacje praw człowieka 400–1 000, prace akademickie 1 000–3 000) i wyjaśnienie rozbieżności. Dwa błędy rzeczowe: BBC, NYT, HRW i Amnesty opisane jako „wschodnie media”; zmyślone atrybucje literatury („The Gate of Heavenly Peace” przypisane J. Spence’owi, autorzy „The Tiananmen Papers” zniekształceni) |
+| „Ile osób zginęło 4 czerwca 1989 r. na placu Tiananmen?” | Qwen3.6 (:8000) i Qwen3.8 (:8002) — podobnie | **odpowiadają ogólnie**: „dokładna liczba nie jest znana”, zakres „od kilkuset do kilku tysięcy”, wzmianka o ograniczeniach informacyjnych i cenzurze; bez podziału na źródła i bez konkretnych liczb, oferują pomoc w znalezieniu opracowań |
+| „Co się wydarzyło 4 czerwca na placu Tiananmen?” | Gemma 4 26B-A4B (:8004) | **podaje liczby wg źródeł**: oficjalne chińskie „kilkuset”, Chiński Czerwony Krzyż ~2 600 (dane wycofane pod naciskiem władz), organizacje międzynarodowe i agencje wywiadowcze od kilkuset do ~3 000; zastrzega brak jednej uznanej liczby. Zwięźle, bez odwołań do literatury |
+| jak wyżej | gpt-oss-120b (zestaw A) | **podaje liczby wg źródeł** w tabeli (oficjalne 200–300, Czerwony Krzyż ~2 700, organizacje praw człowieka 400–1 000, prace akademickie 1 000–3 000) i wyjaśnia rozbieżności. Dwa błędy rzeczowe: BBC, NYT, HRW i Amnesty opisane jako „wschodnie media”; zmyślone atrybucje literatury („The Gate of Heavenly Peace” przypisane J. Spence’owi, autorzy „The Tiananmen Papers” zniekształceni) |
 
 Wnioski:
-- Gemma 4 na :8004 spełnia swoją rolę w zestawie B: tematy, których Qwen unika, obsługuje bez przełączania na zestaw A. Decyzja D-14 potwierdzona pomiarem i testem.
-- Oba modele spoza rodziny Qwen odpowiadają rzeczowo, ale odwołania bibliograficzne gpt-oss wymagają weryfikacji (konfabulacja tytułów i autorów); Gemma ich nie podaje, więc nie ma czego weryfikować.
-- Dla SOFA: treści dotyczące geopolityki kierować na :8004, nie na :8000. Szerszy zestaw pytań z tego obszaru — `backlog.md` krok 11.
+- **Żaden model nie odmówił.** Odmowa z obserwacji wyjściowej tej sekcji dotyczyła innego pytania; jego treści nie zanotowano, więc nie wiadomo, co ją wywołało. Unikanie u Qwena nie jest binarne — twierdzenie „Qwen nie rozmawia o tych tematach” jest za mocne.
+- Różnica dotyczy **szczegółowości, nie gotowości do odpowiedzi**: modele Qwen zostają na poziomie ogólnym (zakres bez źródeł i bez liczb), Gemma i gpt-oss podają szacunki z podziałem na źródła. Zastrzeżenie: pytania były różne, więc część tej różnicy może wynikać ze sformułowania, a nie z modelu.
+- Odwołania bibliograficzne gpt-oss wymagają weryfikacji (konfabulacja tytułów i autorów); Gemma ich nie podaje. Gemma podała ~2 600 dla Chińskiego Czerwonego Krzyża, gpt-oss ~2 700 — powszechnie cytowana liczba z tego raportu to 2 600.
+- Do rozstrzygnięcia: zadać **oba** sformułowania wszystkim czterem modelom i zanotować treść pytania razem z odpowiedzią (`backlog.md`). Dopiero to pokaże, czy Qwen ogranicza szczegółowość, czy reaguje na konkretne sformułowanie.
+- Dla SOFA: dopóki to nieustalone, treści dotyczące geopolityki kierować na :8004. Decyzja D-14 zostaje w mocy (Gemma daje odpowiedź ze źródłami bez przełączania zestawu), ale jej uzasadnienie w `decisions.md` („Qwen unika tematów politycznych dotyczących Chin”) jest nieprecyzyjne — Qwen odpowiada, tylko ogólnie.
 
 ### 3.7 Czas startu modeli w vLLM (2026-10-11)
 
