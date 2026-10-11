@@ -14,7 +14,6 @@ Jedno miejsce na to, co zostało do zrobienia. Szczegóły i uzasadnienia: [`fin
 | Zadanie | Polecenie / uwagi |
 |---|---|
 | Test pytania o Chiny na Gemmie | Open WebUI; wynik do `findings.md` 3.6 |
-| Lokalna zmiana `--safetensors-load-strategy=prefetch` w `profiles/set-b.env` na Sparku | cofnąć: `git checkout profiles/set-b.env` (brak zysku, `findings.md` 3.7) |
 | Komentarz w `profiles/set-b.env` przy Gemmie („NIEZMIERZONE”) | zaktualizować o pomiar: wagi 17,08 GiB, cache 12,77 GiB przy 0.24 |
 | `poc_output.md` w projekcie claude.ai | oznaczyć jako archiwum, wskazać repo jako źródło prawdy |
 
