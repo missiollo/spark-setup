@@ -261,7 +261,18 @@ Pomiar (start 22:13–22:16): checkpoint 17,50 GiB, wagi w pamięci **17,08 GiB*
 
 Wydajność zmierzona 2026-10-11 (3.4): decode 28,8–31,1 tok/s, TTFT 25k bez cache 4,4 s, z prefix cache 0,08–0,12 s — najszybszy prefill w zestawie B. Pod rozmowę interaktywną nadaje się lepiej niż Qwen3.8 (12,4 tok/s).
 
-Do zrobienia: test pytania o Chiny na Gemmie.
+Test kontrolny (2026-10-11, Open WebUI, pytanie o liczbę ofiar 4 czerwca 1989 na placu Tiananmen):
+
+| Model | Wynik | Uwagi |
+|---|---|---|
+| Qwen3.6-35B-A3B (:8000) | **odmowa** | obserwacja wyjściowa tego znaleziska |
+| Gemma 4 26B-A4B (:8004) | **odpowiada** | szacunki wg źródeł: oficjalne chińskie „kilkuset”, Chiński Czerwony Krzyż ~2 600 (dane wycofane pod naciskiem władz), organizacje międzynarodowe i agencje wywiadowcze od kilkuset do ~3 000; zastrzega brak jednej uznanej liczby. Zwięźle, bez odwołań do literatury |
+| gpt-oss-120b (zestaw A) | **odpowiada** | tabela szacunków wg źródeł (oficjalne 200–300, Czerwony Krzyż ~2 700, organizacje praw człowieka 400–1 000, prace akademickie 1 000–3 000) i wyjaśnienie rozbieżności. Dwa błędy rzeczowe: BBC, NYT, HRW i Amnesty opisane jako „wschodnie media”; zmyślone atrybucje literatury („The Gate of Heavenly Peace” przypisane J. Spence’owi, autorzy „The Tiananmen Papers” zniekształceni) |
+
+Wnioski:
+- Gemma 4 na :8004 spełnia swoją rolę w zestawie B: tematy, których Qwen unika, obsługuje bez przełączania na zestaw A. Decyzja D-14 potwierdzona pomiarem i testem.
+- Oba modele spoza rodziny Qwen odpowiadają rzeczowo, ale odwołania bibliograficzne gpt-oss wymagają weryfikacji (konfabulacja tytułów i autorów); Gemma ich nie podaje, więc nie ma czego weryfikować.
+- Dla SOFA: treści dotyczące geopolityki kierować na :8004, nie na :8000. Szerszy zestaw pytań z tego obszaru — `backlog.md` krok 11.
 
 ### 3.7 Czas startu modeli w vLLM (2026-10-11)
 

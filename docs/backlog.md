@@ -13,7 +13,6 @@ Jedno miejsce na to, co zostało do zrobienia. Szczegóły i uzasadnienia: [`fin
 
 | Zadanie | Polecenie / uwagi |
 |---|---|
-| Test pytania o Chiny na Gemmie | Open WebUI; wynik do `findings.md` 3.6 |
 | Komentarz w `profiles/set-b.env` przy Gemmie („NIEZMIERZONE”) | zaktualizować o pomiar: wagi 17,08 GiB, cache 12,77 GiB przy 0.24 |
 | `poc_output.md` w projekcie claude.ai | oznaczyć jako archiwum, wskazać repo jako źródło prawdy |
 
@@ -27,7 +26,7 @@ Jedno miejsce na to, co zostało do zrobienia. Szczegóły i uzasadnienia: [`fin
 | 4 | Zweryfikować zestaw B (`make status`, `make errors`, tunel z Maca, `make bench`) | zrobione (`findings.md` 3.3, 3.4) |
 | 5 | Zestaw A: pamięć i wydajność gpt-oss-120b | zrobione (`findings.md` 3.5) |
 | 6 | Open WebUI | zrobione (`findings.md` 3.8) |
-| 7 | Gemma 4 w zestawie B: start, pamięć i wydajność | zrobione (`findings.md` 3.6, pomiary 3.4); test pytania o Chiny do zrobienia |
+| 7 | Gemma 4 w zestawie B: start, pamięć, wydajność i test tematyczny | zrobione (`findings.md` 3.6, pomiary 3.4) |
 | 8 | Zaktualizować symulator: efektywne TFLOPS i decode zależne od modelu (`findings.md` 3.5) | do zrobienia |
 | 9 | Uruchomić zestaw D, podłączyć OpenCode na Macu, zmierzyć pamięć i wydajność Coder-Next | do zrobienia |
 | 10 | Potwierdzić licencje Qwen3.8 i Qwen3-Coder-Next w plikach LICENSE (tagi HF: Apache 2.0) | do zrobienia |
