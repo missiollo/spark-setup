@@ -12,7 +12,7 @@ COMPOSE  = docker compose --env-file .run.env
 ALL_PROFILES = embed-8001,vllm-8002,vllm-8003,vllm-8004,ui
 PROFILES = $(shell grep -E '^COMPOSE_PROFILES=' .run.env 2>/dev/null | cut -d= -f2)
 
-.PHONY: help bootstrap harden-ssh env models pin list up up-ui down restart logs log status errors ps test bench drop-caches
+.PHONY: help bootstrap harden-ssh env models pin list up up-ui down restart logs log status errors ps test bench top drop-caches
 
 help: ## Lista poleceń
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -86,6 +86,9 @@ test: ## Szybki test API: lista modeli + krótka odpowiedź
 
 bench: ## Pomiar TTFT i tok/s (wyniki w bench/results/)
 	python3 bench/run_bench.py --base-url http://localhost:8000/v1 --out bench/results
+
+top: ## Podgląd na żywo jednego modelu: make top P=8000 (tok/s, kolejka, ucięte odpowiedzi; Ctrl+C kończy)
+	@scripts/vllm-top.sh $(P)
 
 drop-caches: ## Zwolnienie cache stron (zalecane przez NVIDIA przy OOM na starcie vLLM)
 	sync && echo 3 | sudo tee /proc/sys/vm/drop_caches >/dev/null

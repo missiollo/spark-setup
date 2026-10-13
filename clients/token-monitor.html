@@ -40,7 +40,7 @@ input{font:inherit;color:var(--text-primary);background:var(--surface);border:1p
 .saved button{padding:2px 8px;font-size:12px}
 #status i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-muted)}
 #status.ok i{background:var(--good)}#status.err i{background:var(--danger)}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin-bottom:14px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(122px,1fr));gap:10px;margin-bottom:14px}
 .tile{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
 .tile p{margin:0;font-size:12px;color:var(--text-secondary)}
 .tile div{font-size:22px;font-weight:600;margin-top:2px}
@@ -100,6 +100,7 @@ code{font-size:12px}
   <div class="tile"><p>Z prefix cache</p><div id="tHit">–</div><small>tokenów promptu od otwarcia</small></div>
   <div class="tile"><p>Średni TTFT</p><div id="tTtft">–</div><small id="tReq">zapytań: –</small></div>
   <div class="tile"><p>W toku / w kolejce</p><div id="tRun">–</div><small id="tKv">KV cache: –</small></div>
+  <div class="tile"><p>Ucięte na limicie</p><div id="tLen">–</div><small id="tLenS">odpowiedzi od otwarcia</small></div>
 </div>
 
 <div class="card">
@@ -122,7 +123,7 @@ code{font-size:12px}
   <table><thead><tr><th>Czas</th><th>Generowanie [tok/s]</th><th>Prefill [tok/s]</th><th>Z cache [tok/s]</th><th>W toku</th><th>KV cache</th></tr></thead><tbody id="tbody"></tbody></table>
 </div>
 
-<p class="foot">vLLM: <code>vllm:generation_tokens_total</code>, <code>vllm:prompt_tokens_total</code>, <code>vllm:prefix_cache_hits_total</code>, <code>vllm:time_to_first_token_seconds</code>, <code>vllm:num_requests_*</code>, <code>vllm:kv_cache_usage_perc</code> (porty Sparka wymagają tunelu <code>ssh -N spark</code>). llama.cpp (<code>llama-server --metrics</code>): <code>llamacpp:tokens_predicted_total</code>, <code>llamacpp:prompt_tokens_total</code> (tylko tokeny obliczone — brak danych o cache i TTFT), <code>llamacpp:requests_*</code>. Prędkości to różnice liczników między odczytami. Sesja do pobrania jako CSV; ostatnia zapisuje się w tej przeglądarce (opis kolumn: <code>findings.md</code> 6.3).</p>
+<p class="foot">vLLM: <code>vllm:generation_tokens_total</code>, <code>vllm:prompt_tokens_total</code>, <code>vllm:prefix_cache_hits_total</code>, <code>vllm:time_to_first_token_seconds</code>, <code>vllm:num_requests_*</code>, <code>vllm:kv_cache_usage_perc</code>, <code>vllm:request_success_total</code> (ucięte = <code>finished_reason="length"</code>) (porty Sparka wymagają tunelu <code>ssh -N spark</code>). llama.cpp (<code>llama-server --metrics</code>): <code>llamacpp:tokens_predicted_total</code>, <code>llamacpp:prompt_tokens_total</code> (tylko tokeny obliczone — brak danych o cache i TTFT), <code>llamacpp:requests_*</code>. Prędkości to różnice liczników między odczytami. Sesja do pobrania jako CSV; ostatnia zapisuje się w tej przeglądarce (opis kolumn: <code>findings.md</code> 6.3).</p>
 </main>
 
 <script>
@@ -137,7 +138,9 @@ function parse(txt){const m={};
     const i=l.lastIndexOf(" ");const k=l.slice(0,i),v=parseFloat(l.slice(i+1));
     const b=k.indexOf("{"),name=b<0?k:k.slice(0,b);
     if(b>=0&&!model){const mm=k.match(/model_name="([^"]+)"/);if(mm)model=mm[1]}
-    m[name]=(m[name]||0)+v}
+    m[name]=(m[name]||0)+v;
+    // zakończone zapytania wg powodu: „length” = odpowiedź ucięta na max_tokens
+    if(name==="vllm:request_success_total"){m.fin=(m.fin||0)+v;if(/finished_reason="length"/.test(k))m.len=(m.len||0)+v}}
   return m}
 // vLLM: prompt_tokens = wszystkie tokeny promptu, z czego hits z prefix cache.
 // llama.cpp: prompt_tokens_total = tokeny faktycznie obliczone; cache, TTFT i KV niedostępne (null).
@@ -146,10 +149,10 @@ function pick(m){const t=Date.now();
     return{t,gen:m["vllm:generation_tokens_total"]||0,pr:m["vllm:prompt_tokens_total"]||0,
       hit:m["vllm:prefix_cache_hits_total"]||0,tts:m["vllm:time_to_first_token_seconds_sum"]||0,
       ttc:m["vllm:time_to_first_token_seconds_count"]||0,run:m["vllm:num_requests_running"]||0,
-      wait:m["vllm:num_requests_waiting"]||0,kv:m["vllm:kv_cache_usage_perc"]||0}}
+      wait:m["vllm:num_requests_waiting"]||0,kv:m["vllm:kv_cache_usage_perc"]||0,len:m.len||0,fin:m.fin||0}}
   if("llamacpp:tokens_predicted_total" in m){backend="llama.cpp";
     return{t,gen:m["llamacpp:tokens_predicted_total"]||0,pr:m["llamacpp:prompt_tokens_total"]||0,
-      hit:null,tts:null,ttc:null,run:m["llamacpp:requests_processing"]||0,wait:m["llamacpp:requests_deferred"]||0,kv:null}}
+      hit:null,tts:null,ttc:null,run:m["llamacpp:requests_processing"]||0,wait:m["llamacpp:requests_deferred"]||0,kv:null,len:null,fin:null}}
   throw new Error("nieznany format /metrics (ani vLLM, ani llama.cpp)")}
 const addr=()=>$("port").value==="custom"?$("custom").value.trim():$("port").value;
 
@@ -166,7 +169,8 @@ async function poll(){
       else{S.push({t:c.t,gen:dg/dt,comp:Math.max(dp-dh,0)/dt,hit:dh/dt,run:c.run,wait:c.wait,kv:c.kv??0});
         if(S.length>KEEP)S.shift();
         ALL.push([new Date(c.t).toISOString(),dt.toFixed(2),Math.round(dg),Math.round(Math.max(dp-dh,0)),c.hit==null?"":Math.round(dh),
-          (dg/dt).toFixed(1),(Math.max(dp-dh,0)/dt).toFixed(1),c.hit==null?"":(dh/dt).toFixed(1),c.run,c.wait,c.kv==null?"":(c.kv*100).toFixed(1)]);
+          (dg/dt).toFixed(1),(Math.max(dp-dh,0)/dt).toFixed(1),c.hit==null?"":(dh/dt).toFixed(1),c.run,c.wait,c.kv==null?"":(c.kv*100).toFixed(1),
+          c.fin==null?"":Math.round(c.fin-prev.fin),c.len==null?"":Math.round(c.len-prev.len)]);
         if(ALL.length>ALL_MAX)ALL.shift();
         if(++polls%5===0)save()}}
     prev=c;
@@ -192,6 +196,8 @@ function tiles(c){
   $("tReq").textContent=n==null?backend:"zapytań: "+f0(n);
   $("tRun").textContent=`${f0(c.run)} / ${f0(c.wait)}`;
   $("tKv").textContent=c.kv==null?"KV cache: brak danych":"KV cache: "+f1(c.kv*100)+"%";
+  if(c.len==null){$("tLen").textContent="brak danych";$("tLenS").textContent=backend}
+  else{$("tLen").textContent=f0(c.len-base.len);$("tLenS").textContent=`z ${f0(c.fin-base.fin)} zakończonych · od startu modelu: ${f0(c.len)}`}
 }
 
 // skala: krok podziałki 1/2/5 × 10^n, oś Y = 4 kroki
@@ -285,7 +291,7 @@ async function labels(){for(const o of $("port").options){if(o.value==="custom")
     const id=(await r.json()).data?.[0]?.id;o.textContent=`${port} — ${id||ROLE[port]}`}
   catch(e){o.textContent=`${port} — ${ROLE[port]} (nie działa)`}}}
 // --- zapis sesji: CSV (separator „,”, kropka dziesiętna) i ostatnia sesja w localStorage
-const COLS=["time_utc","interval_s","gen_tokens","prompt_computed_tokens","prompt_cached_tokens","gen_tok_s","prompt_computed_tok_s","prompt_cached_tok_s","requests_running","requests_waiting","kv_cache_perc"];
+const COLS=["time_utc","interval_s","gen_tokens","prompt_computed_tokens","prompt_cached_tokens","gen_tok_s","prompt_computed_tok_s","prompt_cached_tok_s","requests_running","requests_waiting","kv_cache_perc","requests_finished","requests_truncated"];
 function csvText(meta,rows){const q=v=>/[",\n]/.test(String(v))?`"${String(v).replace(/"/g,'""')}"`:v;
   const head=["endpoint","backend","model",...COLS].join(",");
   return head+"\n"+rows.map(r=>[meta.endpoint,meta.backend,meta.model,...r].map(q).join(",")).join("\n")+"\n"}

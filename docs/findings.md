@@ -576,6 +576,10 @@ Przeniesiona do [`backlog.md`](backlog.md) (sekcja „Kolejność kroków”).
 | llama.cpp na Macu | „inny adres…” → `localhost:9931`; serwer z `--metrics` | generowanie, prompt obliczony, zapytania; **bez** prefix cache, TTFT i KV (llama.cpp ich nie publikuje) |
 | LM Studio | nieobsługiwane — brak `/metrics`; do porównań `bench/run_bench.py --base-url http://localhost:1234/v1` | — |
 
+Kafelek „Ucięte na limicie”: odpowiedzi przerwane po osiągnięciu `max_tokens` (w OpenCode `limit.output`). Ucięta odpowiedź agenta to zwykle niekompletne wywołanie narzędzia — agent ponawia krok. Kilka ucięć z rzędu: przerwać (`esc`) i kazać pisać mniejsze pliki / krócej rozumować.
+
+Podgląd w terminalu: `scripts/vllm-top.sh [PORT] [INTERWAŁ] [--log]` (Mac przez tunel; na Sparku `make top P=8000`). Jedna odświeżana linia: zapytania w toku i w kolejce, generowanie i prefill [tok/s], trafienia prefix cache, KV cache, tokeny wygenerowane od startu skryptu, odpowiedzi ucięte (od startu skryptu / od startu kontenera) z oznaczeniem „← ucięta odpowiedź”. `--log` wypisuje linię na każdy odczyt (do zapisu w pliku). Tylko odczyt; zależności: bash (także 3.2 z macOS), curl, awk.
+
 Zapis: sesja trwa od otwarcia strony albo „Wyzeruj”. **Pobierz CSV** zapisuje całą sesję (do 24 h); ostatnia sesja z tokenami zapisuje się też w przeglądarce (do ~11 h) i po ponownym otwarciu strony jest do pobrania z paska „Poprzednia sesja”. Pliki do porównań: `bench/sessions/` (commitować jak wyniki `make bench`).
 
 Kolumny CSV (jeden wiersz na odczyt; tokeny to przyrost od poprzedniego odczytu, separator `,`, kropka dziesiętna):
@@ -589,6 +593,7 @@ Kolumny CSV (jeden wiersz na odczyt; tokeny to przyrost od poprzedniego odczytu,
 | `prompt_cached_tokens`, `prompt_cached_tok_s` | tokeny promptu z prefix cache; puste dla llama.cpp |
 | `requests_running`, `requests_waiting` | zapytania w toku / w kolejce |
 | `kv_cache_perc` | zajęcie KV cache [%]; puste dla llama.cpp |
+| `requests_finished`, `requests_truncated` | zapytania zakończone w odstępie, w tym ucięte na limicie `max_tokens` (`finished_reason="length"`); puste dla llama.cpp |
 
 Porównanie pracy agentowej (to samo zadanie w OpenCode na obu maszynach):
 1. Mac: `brew install llama.cpp`, potem `llama-server -hf unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q4_K_M --port 9931 --metrics --jinja -c 65536` (`--jinja` potrzebne do tool calling; port inny niż 8080, który zajmuje tunel do Open WebUI). Wariant GGUF zgodny z `models.yaml` → `variants.mac`; plik `UD-Q4_K_M` ma 22,1 GB (mieści się w 48 GB Maca).
