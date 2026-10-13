@@ -358,7 +358,19 @@ Wnioski:
 | Pamięć i system (23:40) | 80 GiB użyte, 40 GiB dostępne, swap 137 MiB (przy zestawie B 9,2 GiB), PSI 0,00, load 0,37 / 20 rdzeni; parametry GPU: sekcja 1 | `free -h`, `/sys/fs/cgroup/memory.pressure`, `uptime` |
 | Kontekst | zajęcie cache do 3,2% (≈ 44 tys. tokenów z 1,39 mln — szacunek z odsetka); prefix cache trafia w ~36–67% tokenów promptu (rośnie w trakcie sesji) | log vLLM (`GPU KV cache usage`, `Prefix cache hit rate`) |
 
+Sesja agentowa z subagentami (2026-10-14 ~00:00–00:45; zadanie: refaktor gry do `minesweeper.logic.js`, testy Jest, integracja, testy Playwright; plan wymuszał równoległe testy i integrację):
+
+| Obserwacja | Wynik | Źródło |
+|---|---|---|
+| Równoległość subagentów | **nie zaobserwowana** — przy każdym odczycie 1 zapytanie w toku; subagenty wywoływane po kolei mimo planu „2 + 3 równolegle” | log vLLM (`Running: 1 reqs`), `vllm-top.sh` |
+| Generowanie | maks. **51,5 tok/s** (obserwacja użytkownika w monitorze tokenów); w logu 45–49 tok/s przy długich odpowiedziach | monitor tokenów, log vLLM |
+| Długa odpowiedź | jedno zapytanie generowało bez przerwy od 00:31:10 do ok. 00:37 (~15 tys. tokenów), ucięte na `limit.output` 16 384 | log vLLM, licznik `finished_reason="length"` |
+| Ucięte odpowiedzi | 6 od startu kontenera (stan 00:45); z tego do 3 to testowe zapytania monitora (`max_tokens` 450), więc OpenCode — co najmniej 2 | `/metrics` |
+| Wynik testów Playwright | do sprawdzenia 2026-10-14 | — |
+
 Wnioski:
+- Qwen3.6 w OpenCode nie wywołuje subagentów równolegle (jedno wywołanie `task` na odpowiedź) — realną równoległość daje tylko kilka sesji OpenCode (B16).
+- Bardzo długie pojedyncze odpowiedzi (rozumowanie albo cały plik w jednym wywołaniu narzędzia) kończą się ucięciem na `limit.output` i ponowieniem kroku — warto kazać pisać mniejsze pliki; ucięcia widać w monitorze tokenów i `vllm-top.sh` (6.3.1).
 - Zestaw C wystarcza do pracy z OpenCode; Coder-Next (zestaw D) nie jest do tego konieczny — porównanie jakości kodu Qwen3.6 i Coder-Next wciąż do zrobienia (krok 9).
 - Praca agentowa to głównie prefill: ~7× więcej tokenów promptu niż odpowiedzi, a prefix cache trafia w 36–67% — liczy się TTFT i prefix cache bardziej niż decode.
 - Dwa równoczesne zapytania dają łącznie ~1,6× więcej tokenów/s niż jedno (77 wobec 48) — zapas na drugiego użytkownika; test współbieżności: B11.
