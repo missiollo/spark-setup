@@ -4,56 +4,90 @@
     "spark-coder": {
       "npm": "@ai-sdk/openai-compatible",
       "name": "DGX Spark :8003 (kod, zestaw D)",
-      "options": { "baseURL": "http://localhost:8003/v1", "apiKey": "none" },
+      "options": {
+        "baseURL": "http://localhost:8003/v1",
+        "apiKey": "none"
+      },
       "models": {
         "qwen3-coder-next-nvfp4": {
           "name": "Qwen3-Coder-Next NVFP4 (zestaw D)",
-          "limit": { "context": 65536, "output": 16384 }
+          "limit": {
+            "context": 65536,
+            "output": 16384
+          }
         }
       }
     },
     "spark": {
       "npm": "@ai-sdk/openai-compatible",
       "name": "DGX Spark :8000 (model główny)",
-      "options": { "baseURL": "http://localhost:8000/v1", "apiKey": "none" },
+      "options": {
+        "baseURL": "http://localhost:8000/v1",
+        "apiKey": "none"
+      },
       "models": {
         "qwen3.6-35b-a3b-nvfp4": {
           "name": "Qwen3.6-35B-A3B NVFP4 (zestawy B, D)",
-          "limit": { "context": 32768, "output": 8192 }
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          }
         },
         "qwen3.6-35b-a3b": {
           "name": "Qwen3.6-35B-A3B FP8 (zestaw C)",
-          "limit": { "context": 65536, "output": 16384 }
+          "limit": {
+            "context": 65536,
+            "output": 16384
+          }
         },
         "gpt-oss-120b": {
           "name": "gpt-oss-120b (zestaw A)",
-          "limit": { "context": 65536, "output": 16384 }
+          "limit": {
+            "context": 65536,
+            "output": 16384
+          }
         }
       }
     },
     "spark-quality": {
       "npm": "@ai-sdk/openai-compatible",
       "name": "DGX Spark :8002 (jakość, zestaw B)",
-      "options": { "baseURL": "http://localhost:8002/v1", "apiKey": "none" },
+      "options": {
+        "baseURL": "http://localhost:8002/v1",
+        "apiKey": "none"
+      },
       "models": {
         "qwen3.8-27b-nvfp4": {
           "name": "Qwen3.8-27B NVFP4 (zestaw B)",
-          "limit": { "context": 32768, "output": 8192 }
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          }
         }
       }
     },
     "spark-general": {
       "npm": "@ai-sdk/openai-compatible",
       "name": "DGX Spark :8004 (ogólny, zestaw B)",
-      "options": { "baseURL": "http://localhost:8004/v1", "apiKey": "none" },
+      "options": {
+        "baseURL": "http://localhost:8004/v1",
+        "apiKey": "none"
+      },
       "models": {
         "gemma-4-26b-a4b-nvfp4": {
           "name": "Gemma 4 26B-A4B NVFP4 (zestaw B)",
-          "limit": { "context": 32768, "output": 8192 }
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          }
         }
       }
     }
   },
   "model": "spark-coder/qwen3-coder-next-nvfp4",
-  "small_model": "spark/qwen3.6-35b-a3b-nvfp4"
+  "small_model": "spark/qwen3.6-35b-a3b-nvfp4",
+  "compaction": {
+    "auto": true,
+    "prune": true
+  }
 }
