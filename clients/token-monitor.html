@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitor tokenów vLLM</title>
+<!--
+  Monitor na żywo: tokeny promptu i generowania z /metrics vLLM (przez tunel ssh -N spark).
+  Otwarcie na Macu: open clients/token-monitor.html
+  Metryki są wspólne dla wszystkich klientów danego portu (OpenCode, Open WebUI, make bench);
+  przy pracy samego OpenCode pokazują jego zużycie.
+-->
+<style>
+:root{color-scheme:light;
+--page:#f9f9f7;--surface:#fcfcfb;--text-primary:#0b0b0b;--text-secondary:#52514e;--text-muted:#898781;
+--grid:#e1e0d9;--axis:#c3c2b7;--border:rgba(11,11,11,.10);--danger:#d03b3b;--good:#006300;
+--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a}
+@media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])){color-scheme:dark;
+--page:#0d0d0d;--surface:#1a1a19;--text-primary:#fff;--text-secondary:#c3c2b7;--text-muted:#898781;
+--grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,.10);--danger:#e66767;--good:#0ca30c;
+--s1:#3987e5;--s2:#d95926;--s3:#199e70}}
+:root[data-theme="dark"]{color-scheme:dark;
+--page:#0d0d0d;--surface:#1a1a19;--text-primary:#fff;--text-secondary:#c3c2b7;--text-muted:#898781;
+--grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,.10);--danger:#e66767;--good:#0ca30c;
+--s1:#3987e5;--s2:#d95926;--s3:#199e70}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text-primary);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.45}
+main{max-width:980px;margin:0 auto;padding:20px 16px 32px}
+h1{font-size:20px;font-weight:600;margin:0}
+.sub{color:var(--text-secondary);font-size:13px;margin:2px 0 14px}
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px;font-size:13px;color:var(--text-secondary)}
+select,button{font:inherit;color:var(--text-primary);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 10px}
+button{cursor:pointer}
+#status{margin-left:auto;display:flex;align-items:center;gap:6px}
+#status i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-muted)}
+#status.ok i{background:var(--good)}#status.err i{background:var(--danger)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin-bottom:14px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.tile p{margin:0;font-size:12px;color:var(--text-secondary)}
+.tile div{font-size:22px;font-weight:600;margin-top:2px}
+.tile small{display:block;font-size:12px;color:var(--text-muted)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 12px 6px;margin-bottom:12px;position:relative}
+.card h2{font-size:14px;font-weight:600;margin:0}
+.card .note{font-size:12px;color:var(--text-muted);margin:0 0 6px}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--text-secondary);margin:4px 0 2px;flex-wrap:wrap}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:var(--c)}
+svg{display:block;width:100%;overflow:visible}
+svg:focus{outline:2px solid var(--s1);outline-offset:2px;border-radius:4px}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 9px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);display:none;white-space:nowrap;z-index:2}
+.tip .t{color:var(--text-muted);margin-bottom:2px}
+.tip .r{display:flex;align-items:center;gap:6px}
+.tip .r b{font-weight:600;min-width:52px;text-align:right}
+.tip .r i{display:inline-block;width:12px;height:2px;background:var(--c)}
+.tip .r span{color:var(--text-secondary)}
+table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+th,td{padding:4px 8px;text-align:right;border-bottom:1px solid var(--grid)}
+th{color:var(--text-secondary);font-weight:600}
+th:first-child,td:first-child{text-align:left}
+.foot{font-size:12px;color:var(--text-muted);margin-top:8px}
+code{font-size:12px}
+</style>
+</head>
+<body>
+<main>
+<h1>Monitor tokenów vLLM</h1>
+<p class="sub" id="sub">Odczyt <code>/metrics</code> co 2 s przez tunel SSH. Liczby od otwarcia strony.</p>
+
+<div class="filters">
+  <label>Port <select id="port">
+    <option value="8000">8000 — model główny</option>
+    <option value="8002">8002 — Qwen3.8</option>
+    <option value="8003">8003 — Coder-Next</option>
+    <option value="8004">8004 — Gemma 4</option>
+  </select></label>
+  <label>Okno <select id="win">
+    <option value="60">1 min</option>
+    <option value="300" selected>5 min</option>
+    <option value="900">15 min</option>
+  </select></label>
+  <button id="reset" type="button">Wyzeruj</button>
+  <button id="tbl" type="button" aria-expanded="false">Tabela</button>
+  <span id="status" role="status"><i></i><span id="stxt">łączenie…</span></span>
+</div>
+
+<div class="tiles">
+  <div class="tile"><p>Generowanie teraz</p><div id="tGen">–</div><small>tok/s, średnia z 10 s</small></div>
+  <div class="tile"><p>Wygenerowane</p><div id="tOut">–</div><small>tokenów od otwarcia</small></div>
+  <div class="tile"><p>Prompt</p><div id="tIn">–</div><small id="tInS">tokenów od otwarcia</small></div>
+  <div class="tile"><p>Z prefix cache</p><div id="tHit">–</div><small>tokenów promptu od otwarcia</small></div>
+  <div class="tile"><p>Średni TTFT</p><div id="tTtft">–</div><small id="tReq">zapytań: –</small></div>
+  <div class="tile"><p>W toku / w kolejce</p><div id="tRun">–</div><small id="tKv">KV cache: –</small></div>
+</div>
+
+<div class="card">
+  <h2>Generowanie [tok/s]</h2>
+  <p class="note">Suma wszystkich zapytań w toku; przy dwóch równoczesnych rośnie.</p>
+  <svg id="c1" tabindex="0" aria-label="Wykres generowania tokenów na sekundę"></svg>
+  <div class="tip" id="tip1"></div>
+</div>
+
+<div class="card">
+  <h2>Prompt [tok/s]</h2>
+  <p class="note">Słupek = jeden odczyt (2 s). Prefill przychodzi skokami: na początku każdego kroku agenta.</p>
+  <div class="legend"><span style="--c:var(--s2)">obliczone (prefill)</span><span style="--c:var(--s3)">z prefix cache</span></div>
+  <svg id="c2" tabindex="0" aria-label="Wykres tokenów promptu na sekundę, obliczone i z cache"></svg>
+  <div class="tip" id="tip2"></div>
+</div>
+
+<div class="card" id="tblCard" hidden>
+  <h2>Ostatnie odczyty</h2>
+  <table><thead><tr><th>Czas</th><th>Generowanie [tok/s]</th><th>Prefill [tok/s]</th><th>Z cache [tok/s]</th><th>W toku</th><th>KV cache</th></tr></thead><tbody id="tbody"></tbody></table>
+</div>
+
+<p class="foot">Źródło: <code>vllm:generation_tokens_total</code>, <code>vllm:prompt_tokens_total</code>, <code>vllm:prefix_cache_hits_total</code>, <code>vllm:time_to_first_token_seconds</code>, <code>vllm:num_requests_*</code>, <code>vllm:kv_cache_usage_perc</code>. Prędkości to różnice liczników między odczytami. Wymaga otwartego tunelu <code>ssh -N spark</code>. Dane tylko w tej karcie przeglądarki.</p>
+</main>
+
+<script>
+const POLL=2000, KEEP=900; // co 2 s; bufor 15 min
+const $=id=>document.getElementById(id);
+let S=[], prev=null, base=null, timer=null, model="";
+
+// Prometheus: suma wartości metryki po wszystkich zestawach etykiet
+function parse(txt){const m={};
+  for(const l of txt.split("\n")){if(!l||l[0]==="#")continue;
+    const i=l.lastIndexOf(" ");const k=l.slice(0,i),v=parseFloat(l.slice(i+1));
+    const b=k.indexOf("{"),name=b<0?k:k.slice(0,b);
+    if(b>=0&&!model){const mm=k.match(/model_name="([^"]+)"/);if(mm)model=mm[1]}
+    m[name]=(m[name]||0)+v}
+  return m}
+const pick=m=>({t:Date.now(),
+  gen:m["vllm:generation_tokens_total"]||0, pr:m["vllm:prompt_tokens_total"]||0,
+  hit:m["vllm:prefix_cache_hits_total"]||0, tts:m["vllm:time_to_first_token_seconds_sum"]||0,
+  ttc:m["vllm:time_to_first_token_seconds_count"]||0, run:m["vllm:num_requests_running"]||0,
+  wait:m["vllm:num_requests_waiting"]||0, kv:m["vllm:kv_cache_usage_perc"]||0});
+
+async function poll(){
+  const port=$("port").value;
+  try{
+    const r=await fetch(`http://localhost:${port}/metrics`,{cache:"no-store"});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const c=pick(parse(await r.text()));
+    if(!base)base=c;
+    if(prev){const dt=(c.t-prev.t)/1000,dg=c.gen-prev.gen,dp=c.pr-prev.pr,dh=c.hit-prev.hit;
+      if(dg<0||dp<0){base=c}// restart vLLM: liczniki od zera
+      else{S.push({t:c.t,gen:dg/dt,comp:Math.max(dp-dh,0)/dt,hit:dh/dt,run:c.run,wait:c.wait,kv:c.kv});
+        if(S.length>KEEP)S.shift()}}
+    prev=c;
+    setStatus("ok",`połączono · ${model||"model"} · :${port}`);
+    tiles(c);
+  }catch(e){setStatus("err",`brak połączenia z localhost:${port} — tunel otwarty? model działa?`)}
+  draw();
+}
+function setStatus(cls,t){$("status").className=cls;$("stxt").textContent=t}
+
+const nf=new Intl.NumberFormat("pl-PL");
+const f0=v=>nf.format(Math.round(v));
+const f1=v=>v>=100?f0(v):v.toLocaleString("pl-PL",{maximumFractionDigits:1,minimumFractionDigits:1});
+function tiles(c){
+  const last=S.slice(-5), g=last.length?last.reduce((a,x)=>a+x.gen,0)/last.length:0;
+  $("tGen").textContent=f1(g);
+  const out=c.gen-base.gen, inn=c.pr-base.pr, hit=c.hit-base.hit, n=c.ttc-base.ttc;
+  $("tOut").textContent=f0(out);
+  $("tIn").textContent=f0(inn);
+  $("tInS").textContent=out>0?`tokenów od otwarcia · ${f1(inn/out)} : 1 do odpowiedzi`:"tokenów od otwarcia";
+  $("tHit").textContent=inn>0?f0(hit/inn*100)+"%":"–";
+  $("tTtft").textContent=n>0?f1((c.tts-base.tts)/n)+" s":"–";
+  $("tReq").textContent="zapytań: "+f0(n);
+  $("tRun").textContent=`${f0(c.run)} / ${f0(c.wait)}`;
+  $("tKv").textContent="KV cache: "+f1(c.kv*100)+"%";
+}
+
+// skala: krok podziałki 1/2/5 × 10^n, oś Y = 4 kroki
+function niceStep(v){if(v<=0)return 2.5;const r=v/4,p=Math.pow(10,Math.floor(Math.log10(r))),n=r/p;
+  return (n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10)*p}
+const ftick=v=>v.toLocaleString("pl-PL",{maximumFractionDigits:1});
+const hhmmss=t=>new Date(t).toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+const NS="http://www.w3.org/2000/svg";
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e}
+
+// series: [{key,color,label}] rysowane jako stos (pierwsza na dole); bars: słupki na odczyt zamiast linii
+function chart(svgId,tipId,series,bars){
+  const svg=$(svgId),W=svg.clientWidth||600,H=190,M={l:52,r:96,t:10,b:24};
+  svg.setAttribute("viewBox",`0 0 ${W} ${H}`);svg.setAttribute("height",H);svg.textContent="";
+  const now=Date.now(),win=+$("win").value*1000,t0=now-win;
+  const D=S.filter(d=>d.t>=t0), pw=W-M.l-M.r, ph=H-M.t-M.b;
+  const tot=d=>series.reduce((a,s)=>a+d[s.key],0);
+  const ymax=niceStep(Math.max(...D.map(tot),0)*1.05)*4;
+  const x=t=>M.l+(t-t0)/win*pw, y=v=>M.t+ph-v/ymax*ph;
+  const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  // siatka i oś Y
+  for(let i=0;i<=4;i++){const v=ymax*i/4,yy=y(v);
+    el("line",{x1:M.l,x2:M.l+pw,y1:yy,y2:yy,stroke:i?css("--grid"):css("--axis"),"stroke-width":1},svg);
+    const tx=el("text",{x:M.l-6,y:yy+4,"text-anchor":"end","font-size":11,fill:css("--text-muted")},svg);tx.textContent=ftick(v)}
+  // oś X: znaczniki co 1/4 okna
+  for(let i=0;i<=4;i++){const t=t0+win*i/4,xx=x(t);
+    const tx=el("text",{x:xx,y:H-6,"text-anchor":i===0?"start":i===4?"end":"middle","font-size":11,fill:css("--text-muted")},svg);
+    tx.textContent=i===4?"teraz":hhmmss(t)}
+  if(D.length<2){const tx=el("text",{x:M.l+pw/2,y:M.t+ph/2,"text-anchor":"middle","font-size":12,fill:css("--text-muted")},svg);
+    tx.textContent="zbieranie danych…";return}
+  let lower=D.map(()=>0);
+  if(bars){// słupki skumulowane: jeden na odczyt (okres POLL), 1 px odstępu w kolorze tła
+    const bw=Math.max(pw*POLL/win-1,1);
+    series.forEach(s=>{const upper=D.map((d,i)=>lower[i]+d[s.key]);
+      D.forEach((d,i)=>{const h=y(lower[i])-y(upper[i]);if(h<=0)return;
+        el("rect",{x:(x(d.t)-bw).toFixed(1),y:y(upper[i]).toFixed(1),width:bw.toFixed(1),height:Math.max(h-(lower[i]>0?1:0),0.5).toFixed(1),fill:css(s.color)},svg)});
+      s._ly=y(upper[upper.length-1]);s._lv=D[D.length-1][s.key];lower=upper});
+  }else{// linia 2 px z delikatnym wypełnieniem
+  series.forEach((s,si)=>{
+    const upper=D.map((d,i)=>lower[i]+d[s.key]);
+    const top=D.map((d,i)=>`${x(d.t).toFixed(1)},${y(upper[i]).toFixed(1)}`);
+    const bot=D.map((d,i)=>`${x(d.t).toFixed(1)},${y(lower[i]).toFixed(1)}`).reverse();
+    el("polygon",{points:top.concat(bot).join(" "),fill:css(s.color),"fill-opacity":0.10},svg);
+    el("polyline",{points:top.join(" "),fill:"none",stroke:css(s.color),"stroke-width":2,"stroke-linejoin":"round","stroke-linecap":"round"},svg);
+    const L=D[D.length-1],ly=y(upper[upper.length-1]);
+    el("circle",{cx:x(L.t),cy:ly,r:4,fill:css(s.color),stroke:css("--surface"),"stroke-width":2},svg);
+    s._ly=ly; s._lv=L[s.key];
+    lower=upper})}
+  // etykiety końcowe bez nakładania
+  const gap=series.length>1?30:0,labs=series.map(s=>({s,y:s._ly})).sort((a,b)=>b.y-a.y);// od dołu; kolejne w górę
+  for(let i=1;i<labs.length;i++)if(labs[i-1].y-labs[i].y<gap)labs[i].y=labs[i-1].y-gap;
+  labs.forEach(({s,y:ly})=>{
+    const a=el("text",{x:M.l+pw+10,y:ly+4,"font-size":12,"font-weight":600,fill:css("--text-primary")},svg);a.textContent=f1(s._lv);
+    if(series.length>1){const b=el("text",{x:M.l+pw+10,y:ly+17,"font-size":11,fill:css("--text-secondary")},svg);b.textContent=s.short}});
+  // warstwa najechania: pionowa linia przyciągana do najbliższego odczytu
+  const g=el("g",{},svg),hl=el("line",{y1:M.t,y2:M.t+ph,stroke:css("--axis"),"stroke-width":1,visibility:"hidden"},g);
+  const dots=series.map(s=>el("circle",{r:4,fill:css(s.color),stroke:css("--surface"),"stroke-width":2,visibility:"hidden"},g));
+  const hit=el("rect",{x:M.l,y:M.t,width:pw,height:ph,fill:"transparent"},svg);
+  const tip=$(tipId);
+  function show(i){const d=D[i],xx=x(d.t);let acc=0;
+    hl.setAttribute("x1",xx);hl.setAttribute("x2",xx);hl.setAttribute("visibility","visible");
+    series.forEach((s,k)=>{acc+=d[s.key];dots[k].setAttribute("cx",xx);dots[k].setAttribute("cy",y(acc));dots[k].setAttribute("visibility","visible")});
+    tip.textContent="";const tt=document.createElement("div");tt.className="t";tt.textContent=hhmmss(d.t)+` · w toku: ${d.run}`;tip.appendChild(tt);
+    series.slice().reverse().forEach(s=>{const r=document.createElement("div");r.className="r";r.style.setProperty("--c",`var(${s.color})`);
+      const k=document.createElement("i"),b=document.createElement("b"),n=document.createElement("span");
+      b.textContent=f1(d[s.key]);n.textContent=s.label+" [tok/s]";r.append(k,b,n);tip.appendChild(r)});
+    tip.style.display="block";
+    const bx=svg.getBoundingClientRect(),cx=svg.parentElement.getBoundingClientRect(),px=xx/W*bx.width+bx.left-cx.left;
+    const tw=tip.offsetWidth;tip.style.left=Math.min(Math.max(px+12,0),cx.width-tw-8)+"px";tip.style.top="44px"}
+  function hide(){hl.setAttribute("visibility","hidden");dots.forEach(d=>d.setAttribute("visibility","hidden"));tip.style.display="none"}
+  const nearest=px=>{const t=t0+(px-M.l)/pw*win;let b=0;D.forEach((d,i)=>{if(Math.abs(d.t-t)<Math.abs(D[b].t-t))b=i});return b};
+  hit.addEventListener("pointermove",e=>{const bx=svg.getBoundingClientRect();svg._hi=nearest((e.clientX-bx.left)/bx.width*W);show(svg._hi)});
+  hit.addEventListener("pointerleave",()=>{svg._hi=null;hide()});
+  svg.onkeydown=e=>{if(e.key!=="ArrowLeft"&&e.key!=="ArrowRight")return;e.preventDefault();
+    svg._hi=Math.min(Math.max((svg._hi??D.length-1)+(e.key==="ArrowLeft"?-1:1),0),D.length-1);show(svg._hi)};
+  svg.onblur=()=>{svg._hi=null;hide()};
+  if(svg._hi!=null&&D[svg._hi])show(svg._hi);
+}
+function table(){if($("tblCard").hidden)return;const tb=$("tbody");tb.textContent="";
+  S.slice(-30).reverse().forEach(d=>{const tr=document.createElement("tr");
+    [hhmmss(d.t),f1(d.gen),f1(d.comp),f1(d.hit),f0(d.run)+(d.wait?` (+${f0(d.wait)})`:""),f1(d.kv*100)+"%"].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td)});
+    tb.appendChild(tr)})}
+function draw(){
+  chart("c1","tip1",[{key:"gen",color:"--s1",label:"generowanie",short:"generowanie"}]);
+  chart("c2","tip2",[{key:"comp",color:"--s2",label:"obliczone",short:"obliczone"},{key:"hit",color:"--s3",label:"z cache",short:"z cache"}],true);
+  table()}
+function restart(){S=[];prev=null;base=null;model="";clearInterval(timer);poll();timer=setInterval(poll,POLL)}
+$("port").addEventListener("change",restart);
+$("reset").addEventListener("click",restart);
+$("win").addEventListener("change",draw);
+$("tbl").addEventListener("click",()=>{const c=$("tblCard");c.hidden=!c.hidden;$("tbl").setAttribute("aria-expanded",String(!c.hidden));table()});
+window.addEventListener("resize",draw);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",draw);
+restart();
+</script>
+</body>
+</html>

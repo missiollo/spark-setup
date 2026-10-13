@@ -45,7 +45,7 @@ Na Macu (przez tunel): `curl localhost:8000/v1/models`, OpenCode z `clients/open
 | `scripts/render_env.py` | składa `.run.env` z `.env` + profilu + `models.yaml` |
 | `bench/run_bench.py` | TTFT (zimny i z prefix cache) i tok/s; wyniki JSON w `bench/results/` |
 | `ssh/` | wpis do `~/.ssh/config` z tunelami, klucze publiczne |
-| `clients/` | konfiguracja OpenCode dla endpointu Sparka |
+| `clients/` | konfiguracja OpenCode dla endpointu Sparka; `token-monitor.html` — wykres na żywo tokenów promptu i generowania z `/metrics` vLLM (`open clients/token-monitor.html` na Macu, przy otwartym tunelu) |
 
 ## Zestawy
 

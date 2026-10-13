@@ -564,6 +564,7 @@ Przeniesiona do [`backlog.md`](backlog.md) (sekcja „Kolejność kroków”).
 | B | `spark/qwen3.6-35b-a3b-nvfp4` | `spark/qwen3.6-35b-a3b-nvfp4` |
 | A | `spark/gpt-oss-120b` | `spark/gpt-oss-120b` |
 
+- Podgląd zużycia tokenów na żywo: `open clients/token-monitor.html` na Macu (przy otwartym tunelu). Strona co 2 s czyta `/metrics` vLLM (CORS `*`, bez serwera pośredniego) i pokazuje generowanie [tok/s], prompt obliczony / z prefix cache, średni TTFT, zapytania w toku i zajęcie KV cache. Metryki dotyczą całego portu, nie tylko OpenCode.
 - OpenCode 1.19.0 z zestawem C działa (2026-10-13, 3.10). Tool calling sprawdzony też przez API (`curl` z narzędziem `read_file`): `finish_reason: tool_calls`, poprawne argumenty; parser `qwen3_coder` działa.
 
 ### 6.4 Sieć i bezpieczeństwo
