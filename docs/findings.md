@@ -531,8 +531,18 @@ Przeniesiona do [`backlog.md`](backlog.md) (sekcja „Kolejność kroków”).
 
 - Uruchamiany na Macu, w repozytorium z kodem; Spark służy wyłącznie jako endpoint modelu przez tunel.
 - Model: Qwen3-Coder-Next NVFP4 na :8003 (zestaw D), `small_model` (drobne zadania, tytuły sesji) Qwen3.6-35B-A3B na :8000. Lokalnie na Macu M4 Pro 48 GB Coder-Next się nie mieści.
-- Konfiguracja: dostawcy zgodni z API OpenAI (`localhost:8003`, `:8000`, `:8002`, `:8004`); wzór w `clients/opencode.json.example` (format sprawdzić w dokumentacji opencode.ai).
+- Konfiguracja: dostawcy zgodni z API OpenAI (`localhost:8003`, `:8000`, `:8002`, `:8004`); wzór w `clients/opencode.json.example` (z limitami kontekstu i odpowiedzi dla każdego modelu).
 - Przy pracy nad SOFA (zestaw B) Coder-Next nie działa; OpenCode można wtedy przełączyć na Qwen3.6 (:8000).
+- Wzór domyślnie ustawia zestaw D. Przy innym zestawie zmienić w `~/.config/opencode/opencode.json` pola `model` i `small_model` — oba muszą wskazywać model, który działa (inaczej tytuły sesji i drobne zadania kończą się błędem). Limity kontekstu w `limit.context` odpowiadają `*_MAX_LEN` z profili.
+
+| Zestaw | `model` | `small_model` |
+|---|---|---|
+| D | `spark-coder/qwen3-coder-next-nvfp4` | `spark/qwen3.6-35b-a3b-nvfp4` |
+| C | `spark/qwen3.6-35b-a3b` | `spark/qwen3.6-35b-a3b` |
+| B | `spark/qwen3.6-35b-a3b-nvfp4` | `spark/qwen3.6-35b-a3b-nvfp4` |
+| A | `spark/gpt-oss-120b` | `spark/gpt-oss-120b` |
+
+- Tool calling na zestawie C sprawdzony 2026-10-13 przez API (`curl` z narzędziem `read_file`): `finish_reason: tool_calls`, poprawne argumenty; parser `qwen3_coder` działa.
 
 ### 6.4 Sieć i bezpieczeństwo
 

@@ -13,7 +13,7 @@ Jedno miejsce na to, co zostało do zrobienia. Szczegóły i uzasadnienia: [`fin
 
 | Kolejność | Zadanie | Odnośniki |
 |---|---|---|
-| 1 | Praca z OpenCode na **zestawie C** (`make up SET=c`: Qwen3.6-35B-A3B FP8 na :8000 + bge-m3): sprawdzenie całego łańcucha (tunel, konfiguracja klienta, tool calling) i pomiar zestawu C — **pomiar zrobiony 2026-10-13** (`findings.md` 3.9); łańcuch z OpenCode do sprawdzenia | `findings.md` 6.3, 5.2; `clients/opencode.json.example` — w OpenCode wybrać `spark/qwen3.6-35b-a3b`, bo `model` ze wzoru wskazuje Coder-Next z zestawu D |
+| 1 | Praca z OpenCode na **zestawie C** (`make up SET=c`: Qwen3.6-35B-A3B FP8 na :8000 + bge-m3): sprawdzenie całego łańcucha (tunel, konfiguracja klienta, tool calling) i pomiar zestawu C — **pomiar zrobiony 2026-10-13** (`findings.md` 3.9); łańcuch z OpenCode do sprawdzenia | `findings.md` 6.3, 5.2; `clients/opencode.json.example`; ustawienia `model` / `small_model` dla zestawu C: `findings.md` 6.3 |
 | 2 | Scenariusze SOFA na modelach zestawu B: ocena jakości wymagań, text-to-SQL, RAG nad modelem EA, pytania z obszaru geopolityki | krok 11; `findings.md` 3.6; `docs/context/sofa-obserwacje.md` |
 | 3 | Dyskusja: jak zmienić konfigurację pod pracę wieloużytkownikową — profil `set-analysts`, `max_num_seqs`, przydziały pamięci, limity kontekstu, test współbieżności | krok 13, B11; `findings.md` 6.5 |
 
