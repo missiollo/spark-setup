@@ -244,7 +244,7 @@ Porównanie czterech modeli (jeden użytkownik):
 | Decode / sufit przepustowości (273 GB/s ÷ aktywne wagi) | ~55% | ~42% (szacowano ~90 tok/s) | ~32% (szacunek: aktywne wagi ~2,8 GB) | ~90% |
 
 Wnioski:
-- Efektywna moc obliczeniowa zależy od modelu i kerneli: gęsty Qwen3.8 w NVFP4 wykorzystuje Blackwella najlepiej (~110–130 TFLOPS), modele MoE znacznie słabiej (~30–55 TFLOPS). Symulator (`context/rag-ea-symulator.html`) zakłada jedną wartość 80 TFLOPS — do zamiany na wartości zależne od modelu.
+- Efektywna moc obliczeniowa zależy od modelu i kerneli: gęsty Qwen3.8 w NVFP4 wykorzystuje Blackwella najlepiej (~110–130 TFLOPS), modele MoE znacznie słabiej (~30–55 TFLOPS). Symulator (`context/rag-ea-symulator.html`) zakładał jedną wartość 80 TFLOPS; od 2026-10-13 dla Sparka używa zmierzonych TTFT i decode (B12).
 - gpt-oss-120b generuje o połowę wolniej, niż zakładano (38 zamiast ~90 tok/s; kernele MoE MXFP4 w tej wersji vLLM na GB10), zajmuje 3,4× więcej pamięci niż Qwen3.6 i jest wolniejszy w obu fazach. Jego przewagą może być wyłącznie jakość (tool calling, rozumowanie, brak ograniczeń tematycznych Qwena, 3.6) — rozstrzygnie zestaw testowy SOFA.
 - Qwen3.8 dekoduje blisko sufitu przepustowości pamięci (~90%); odpowiedź 400 tokenów to ~32 s, 1000 tokenów rozumowania ~80 s — do zadań wsadowych i SQL, nie do czatu.
 - RAG ~25k tokenów: TTFT 4–12 s bez cache dla wszystkich modeli — poniżej proponowanego kryterium 15 s dla jednego użytkownika; z prefix cache poniżej 1 s. Kolejność sekcji promptu (stałe na początku, `context/sofa-obserwacje.md` sekcja 8) ma bardzo duży wpływ.

@@ -36,7 +36,7 @@ Jedno miejsce na to, co zostało do zrobienia. Szczegóły i uzasadnienia: [`fin
 | 5 | Zestaw A: pamięć i wydajność gpt-oss-120b | zrobione (`findings.md` 3.5) |
 | 6 | Open WebUI | zrobione (`findings.md` 3.8) |
 | 7 | Gemma 4 w zestawie B: start, pamięć, wydajność i test tematyczny | zrobione (`findings.md` 3.6, pomiary 3.4) |
-| 8 | Zaktualizować symulator: efektywne TFLOPS i decode zależne od modelu (`findings.md` 3.5) | do zrobienia |
+| 8 | Zaktualizować symulator: efektywne TFLOPS i decode zależne od modelu (`findings.md` 3.5) | zrobione 2026-10-13 (Spark z pomiarów, dodana Gemma 4) |
 | 9 | Uruchomić zestaw D, podłączyć OpenCode na Macu, zmierzyć pamięć i wydajność Coder-Next | do zrobienia |
 | 10 | Potwierdzić licencje Qwen3.8 i Qwen3-Coder-Next w plikach LICENSE (tagi HF: Apache 2.0) | do zrobienia |
 | 11 | Zestaw testowy SOFA na Qwen3.8, gpt-oss i Gemmie (w tym pytania z obszaru geopolityki, `findings.md` 3.6) | do zrobienia |
@@ -62,6 +62,6 @@ Zmiany zidentyfikowane, celowo jeszcze niewprowadzone. Numeracja B* jest stała 
 | B9 | Open WebUI | Przypięcie wersji obrazu zamiast `:main`; nazwy i opisy modeli; embeddingi dokumentów przez bge-m3 (`http://embed-8001:8000/v1`); wariant modelu bez trybu myślenia do prostych pytań; po teście: modele publiczne, rejestracja z zatwierdzaniem | wygoda i powtarzalność; przygotowanie pod analityków | niski |
 | B10 | Sposób pracy | Przeniesienie pracy do repozytorium i Cursor / Claude Code: `docs/` (findings, decisions, backlog, context), `AGENTS.md` + `CLAUDE.md`, komenda `/finding` | dokumentacja obok kodu, wersjonowana, dostępna agentowi | **zrobione 2026-10-11** (commit „Move findings, decisions and backlog into the repo”); do zrobienia: oznaczyć `poc_output.md` w projekcie claude.ai jako archiwum |
 | B11 | bench | Test współbieżności (1–32 równoczesnych zapytań) i profil `set-analysts` | `findings.md` 6.5 | wysoki przed testami z analitykami |
-| B12 | symulator (`docs/context/rag-ea-symulator.html`) | Efektywne TFLOPS i decode zależne od modelu (MoE ~30–55, dense ~110–130 TFLOPS; decode zmierzony) | `findings.md` 3.5 | średni |
+| B12 | symulator (`docs/context/rag-ea-symulator.html`) | Efektywne TFLOPS i decode zależne od modelu (MoE ~30–55, dense ~110–130 TFLOPS; decode zmierzony) | `findings.md` 3.5 | **zrobione 2026-10-13**: dla Sparka TTFT i decode interpolowane z `bench/results/`, wagi zmierzone, Gemma 4 dodana; pozostałe platformy nadal szacunki |
 | B13 | modele | `make pin` — przypięcie rewizji wszystkich modeli z działających zestawów | odtwarzalność po resecie | średni |
 | B14 | compose / odtwarzalność | Sprawdzić zachowanie zestawu B po reboocie Sparka; jeśli start równoległy kończy się OOM — zdjąć `restart: unless-stopped` z usług vLLM albo uruchamiać je jednostką systemd wołającą `make up SET=b` | wszystkie kontenery mają `restart: unless-stopped`, a `docker` jest `enabled`, więc po reboocie trzy instancje vLLM startują **równolegle**, bez kolejności wymuszanej przez `depends_on` + healthcheck w `make up`. Przy sumie 0.82 i spadku wolnej pamięci do ~14,7 GiB przy ładowaniu sekwencyjnym (`findings.md` 3.6) może to skończyć się OOM i pętlą restartów. Nieprzetestowane — Spark z działającym zestawem B nie był jeszcze restartowany | średni |

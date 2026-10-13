@@ -31,10 +31,10 @@ button:hover{background:var(--surface-1)}
 <body>
 <main>
 <h1>Symulator: prefill, TTFT i decode w RAG nad modelem EA</h1>
-<p class="sub">Porównanie dwóch platform dla tego samego modelu i długości kontekstu. Wartości orientacyjne.</p>
+<p class="sub">Porównanie dwóch platform dla tego samego modelu i długości kontekstu. DGX Spark: pomiary <code>make bench</code> z 2026-10-11 (<code>findings.md</code> 3.4–3.5); pozostałe platformy: szacunki.</p>
 <div class="q"><span style="color:var(--text-secondary)">Pytanie analityka:</span> Które wymagania w pakiecie „Kontrola graniczna” nie mają przypisanego komponentu realizującego?</div>
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:10px">
-<label class="ctl">Model<select id="md" style="flex:1"><option value="q36">Qwen3.6-35B-A3B (MoE)</option><option value="q38" selected>Qwen3.8-27B (dense)</option><option value="oss">gpt-oss-120b (MoE)</option></select></label>
+<label class="ctl">Model<select id="md" style="flex:1"><option value="q36">Qwen3.6-35B-A3B (MoE)</option><option value="q38" selected>Qwen3.8-27B (dense)</option><option value="g4">Gemma 4 26B-A4B (MoE)</option><option value="oss">gpt-oss-120b (MoE)</option></select></label>
 <label class="ctl">Kontekst<input type="range" id="ctx" min="2" max="32" step="1" value="16" style="flex:1"><span id="ctxv" style="min-width:44px;text-align:right">16k</span></label>
 </div>
 <div id="lanes"></div>
@@ -46,28 +46,41 @@ button:hover{background:var(--surface-1)}
 </div>
 <div style="display:flex;gap:10px;align-items:center;margin-bottom:6px;flex-wrap:wrap"><button id="play">▶ Uruchom obie</button><span id="st" style="font-size:13px;color:var(--text-secondary)"></span></div>
 <div id="cmp" style="font-size:13px;color:var(--text-secondary)"></div>
-<p style="font-size:12px;color:var(--text-muted);margin:12px 0 0">Założenia: FLOP prefill ≈ 2 × aktywne parametry × tokeny promptu / efektywne TFLOPS; decode ≈ 60% teoretycznej przepustowości / rozmiar aktywnych wag; wyszukiwanie stałe 0,4 s; KV cache ≈ 0,15 GB na 1k tokenów. Efektywne TFLOPS to szacunki — podmień na własne pomiary w tablicy PF.</p>
+<p style="font-size:12px;color:var(--text-muted);margin:12px 0 0">DGX Spark (pomiar): TTFT bez prefix cache i decode interpolowane liniowo między zmierzonymi długościami promptu (~1,6k, ~6k, ~25k tokenów; powyżej ~25k ekstrapolacja); modele w NVFP4 (gpt-oss: MXFP4), vLLM 0.29, jeden użytkownik, bez trybu rozumowania; wagi zmierzone w logach vLLM. Pozostałe platformy (szacunek): prefill ≈ 2 × aktywne parametry × tokeny promptu / efektywne TFLOPS; decode ≈ 60% teoretycznej przepustowości / aktywne wagi na token. Na Sparku efektywne TFLOPS zależą od modelu (MoE ~30–55, dense ~110–130; <code>findings.md</code> 3.5), więc jedna wartość na platformę jest tylko przybliżeniem. Wspólne założenia: wyszukiwanie stałe 0,4 s (niezmierzone); odpowiedź 400 tokenów; KV cache ≈ 0,15 GB na 1k tokenów; pamięć: wagi + KV ≤ pamięć dla modelu (bez innych modeli zestawu).</p>
 </main>
 <script>
-const PF={spark:{n:"DGX Spark",tf:80,bw:273,mem:112},m3:{n:"M3 Max 128 GB",tf:14,bw:400,mem:96},m4:{n:"M4 Pro 48 GB",tf:8,bw:273,mem:36},strix:{n:"Strix Halo",tf:20,bw:256,mem:110}};
-const MD={q36:{act:3,agb:1.8,tot:21},q38:{act:27,agb:16,tot:16},oss:{act:5.1,agb:3,tot:63}};
+// PF: platformy. meas = TTFT i decode z pomiarów (MD.*.sp); pozostałe liczone z tf (efektywne TFLOPS, szacunek) i bw (GB/s). mem: pamięć dla modelu [GiB]; Spark: 121,69 GiB widziane przez vLLM przy 1.0.
+const PF={spark:{n:"DGX Spark",meas:true,bw:273,mem:121.7},m3:{n:"M3 Max 128 GB",tf:14,bw:400,mem:96},m4:{n:"M4 Pro 48 GB",tf:8,bw:273,mem:36},strix:{n:"Strix Halo",tf:20,bw:256,mem:110}};
+// MD: act = aktywne parametry [mld], agb = aktywne wagi na token [GB] (szacunek), tot = wagi w pamięci [GiB] (zmierzone na Sparku, findings.md 3.5).
+// sp: pomiar na DGX Spark 2026-10-11 (bench/results/): n = tokeny promptu, ttft = TTFT bez prefix cache [s], dec = decode [tok/s].
+const MD={
+q36:{act:3,agb:1.8,tot:19.6,sp:{n:[1592,6240,25143],ttft:[0.34,1.08,5.08],dec:[79.2,77.5,71.3]}},
+q38:{act:27,agb:20.5,tot:19.1,sp:{n:[1591,6241,25142],ttft:[1.44,2.60,11.99],dec:[12.6,12.8,12.4]}},
+g4:{act:4,agb:2.8,tot:17.1,sp:{n:[1591,6241,25141],ttft:[0.24,0.93,4.40],dec:[30.5,30.3,28.8]}},
+oss:{act:5.1,agb:3,tot:66.1,sp:{n:[1582,6004,23704],ttft:[0.46,1.40,5.94],dec:[38.6,37.3,33.7]}}};
 const ANS="Znalazłem 7 wymagań bez relacji realizacji. W pakiecie Kontrola graniczna: REQ-112 (weryfikacja dokumentu), REQ-118 (zapis zdarzenia), REQ-131 (powiadomienie operatora)... Sugeruję przypisać je do komponentu Moduł weryfikacji lub zgłosić lukę analitykowi.".split(" ");
 const $=id=>document.getElementById(id);
 const opts=Object.entries(PF).map(([k,v])=>`<option value="${k}">${v.n}</option>`).join("");
 $("lanes").innerHTML=[0,1].map(i=>`<div class="lane"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><label class="ctl">Platforma ${i===0?"A":"B"}<select id="pf${i}">${opts}</select></label><span class="ph" id="ph${i}">gotowa</span></div>
+<div id="s${i}" style="font-size:12px;color:var(--text-muted);margin-top:6px"></div>
 <div class="bar"><div id="b0${i}" style="background:#B4B2A9;height:100%"></div><div id="b1${i}" style="background:#7F77DD;height:100%"></div><div id="b2${i}" style="background:#1D9E75;height:100%"></div><div id="cur${i}" style="position:absolute;top:0;bottom:0;width:2px;background:var(--text-primary);left:0"></div></div>
 <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px"><div class="mc"><p>TTFT</p><div id="mt${i}">–</div></div><div class="mc"><p>Generowanie</p><div id="mg${i}">–</div></div><div class="mc"><p>Całość</p><div id="ma${i}">–</div></div></div>
 <div id="w${i}" style="font-size:13px;color:var(--text-danger);margin-top:6px"></div><div class="out" id="o${i}"></div></div>`).join("");
 $("pf0").value="spark";$("pf1").value="m3";
 let anim=null;
 function fmt(s){return s<1?Math.round(s*1000)+" ms":s<60?s.toFixed(1)+" s":Math.floor(s/60)+" min "+Math.round(s%60)+" s"}
-function calc(k){const p=PF[k],m=MD[$("md").value],n=+$("ctx").value*1000;
-const ret=0.4,pre=2*m.act*1e9*n/(p.tf*1e12),tps=p.bw*0.6/m.agb,dec=400/tps;
-return{ret,pre,tps,dec,ttft:ret+pre,tot:ret+pre+dec,fits:m.tot+n/1000*0.15<=p.mem,n:p.n}}
+// interpolacja liniowa po zmierzonych punktach; poza zakresem przedłużenie skrajnego odcinka
+function ip(xs,ys,x){const i=x<=xs[1]?0:xs.length-2;return Math.max(ys[i]+(ys[i+1]-ys[i])*(x-xs[i])/(xs[i+1]-xs[i]),0.01)}
+function calc(k){const p=PF[k],m=MD[$("md").value],n=+$("ctx").value*1000,ret=0.4;let pre,tps,src;
+if(p.meas){const M=m.sp,last=M.n[M.n.length-1];pre=ip(M.n,M.ttft,n);tps=ip(M.n,M.dec,n);
+src=`pomiar (make bench, 2026-10-11)${n>last?`, ekstrapolacja powyżej ${(last/1000).toFixed(1).replace(".",",")}k`:""}; efektywnie ~${Math.round(2*m.act*1e9*n/pre/1e12)} TFLOPS w prefillu`}
+else{pre=2*m.act*1e9*n/(p.tf*1e12);tps=p.bw*0.6/m.agb;src=`szacunek: ${p.tf} TFLOPS efektywnie, 60% z ${p.bw} GB/s`}
+const dec=400/tps;
+return{ret,pre,tps,dec,src,ttft:ret+pre,tot:ret+pre+dec,fits:m.tot+n/1000*0.15<=p.mem,n:p.n}}
 function cur(){return[calc($("pf0").value),calc($("pf1").value)]}
 function draw(){if(anim){cancelAnimationFrame(anim);anim=null}
 $("ctxv").textContent=$("ctx").value+"k";const R=cur();const T=Math.max(...R.filter(r=>r.fits).map(r=>r.tot),1);
-R.forEach((r,i)=>{$("w"+i).textContent=r.fits?"":"Ten model z takim kontekstem nie mieści się w pamięci tej platformy.";
+R.forEach((r,i)=>{$("s"+i).textContent="Źródło: "+r.src;$("w"+i).textContent=r.fits?"":"Ten model z takim kontekstem nie mieści się w pamięci tej platformy.";
 const s=r.fits?100/T:0;$("b0"+i).style.width=r.ret*s+"%";$("b1"+i).style.width=r.pre*s+"%";$("b2"+i).style.width=r.dec*s+"%";
 $("mt"+i).textContent=r.fits?fmt(r.ttft):"–";$("mg"+i).textContent=r.fits?Math.round(r.tps)+" tok/s":"–";$("ma"+i).textContent=r.fits?fmt(r.tot):"–";
 $("cur"+i).style.left="0";$("o"+i).textContent="";$("ph"+i).textContent=r.fits?"gotowa":"nie mieści się"});

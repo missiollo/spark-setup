@@ -281,6 +281,8 @@ Wartości orientacyjne; realne czasy zależą od runtime'u.
 
 Interaktywne porównanie dwóch platform dla tego samego modelu i długości kontekstu. Przykładowe pytanie: "Które wymagania w pakiecie »Kontrola graniczna« nie mają przypisanego komponentu realizującego?"
 
+Aktualizacja 2026-10-13: dla DGX Spark symulator używa pomiarów z `make bench` (TTFT bez prefix cache i decode interpolowane po długości promptu, wagi zmierzone; `findings.md` 3.4–3.5) i zawiera Gemmę 4 26B-A4B. Tabele poniżej to założenia pierwotne; dla Sparka nieaktualne (np. efektywne TFLOPS ~30–130 zależnie od modelu zamiast ~80, pamięć 121,69 GiB).
+
 Założenia platform (efektywne TFLOPS to szacunki do podmiany na pomiary):
 
 | Platforma | Efektywne TFLOPS (prefill) | Przepustowość [GB/s] | Pamięć dla modelu [GB] |
