@@ -54,7 +54,7 @@ Na Macu (przez tunel): `curl localhost:8000/v1/models`, OpenCode z `clients/open
 | `b` | :8000 Qwen3.6-35B-A3B + :8002 Qwen3.8-27B + :8004 Gemma 4 26B-A4B (NVFP4) + :8001 bge-m3 | 0.82 | praca nad SOFA | zweryfikowany 2026-10-11: cache 7,85 / 11,71 / 12,77 GiB, decode 79 / 12,6 / 30,5 tok/s |
 | `d` | :8003 Qwen3-Coder-Next + :8000 Qwen3.6-35B-A3B (NVFP4) + :8001 bge-m3 | 0.72 | praca z kodem (OpenCode na Macu przez tunel) | Coder-Next niezmierzony |
 | `a` | :8000 gpt-oss-120b + :8001 bge-m3 | 0.69 | porównanie z zestawem B (przełączenie + ten sam test) | niezmierzony |
-| `c` | :8000 Qwen3.6-35B-A3B (FP8) + :8001 bge-m3 | 0.61 | lekki start | niezmierzony |
+| `c` | :8000 Qwen3.6-35B-A3B (FP8) + :8001 bge-m3 | 0.61 | lekki start | zmierzony 2026-10-13: cache 29,5 GiB, decode 52 → 47 tok/s (`docs/findings.md` 3.9) |
 
 Modele Qwen o tematach drażliwych w Chinach mówią tylko ogólnie, bez liczb i źródeł
 (`docs/findings.md` 3.6); Gemma 4 (:8004) to model ogólny spoza tej rodziny.

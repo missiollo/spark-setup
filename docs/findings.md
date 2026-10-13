@@ -305,6 +305,43 @@ Test `--safetensors-load-strategy=prefetch` (sugerowany przez vLLM w logu): Qwen
 | Błędy `KeyError: 'Session not found'` w logu | nieszkodliwe — przeglądarka wznawia stare połączenie po restarcie kontenera; wystarczy odświeżyć kartę |
 | Modele „Prywatne” | widoczne tylko dla administratora; przed udostępnieniem innym przełączyć na publiczne |
 
+### 3.9 Pomiary zestawu C — Qwen3.6-35B-A3B FP8 (2026-10-13)
+
+Start: `make up-ui SET=c` po `make down` zestawu B i `make drop-caches`. Pomiar: `make bench` (jak w 3.4), wynik `bench/results/20261013-2315-dgx-spark-qwen3.6-35b-a3b.json`. Pamięć i czasy z `docker logs spark-8000-qwen3.6-35b-a3b`.
+
+Pamięć (przydział 0.55 = 66,93 GiB; wolne przy starcie 115,29 / 121,69 GiB):
+
+| Element | FP8 (zestaw C) | NVFP4 (zestaw B, 3.3–3.4) |
+|---|---|---|
+| Wagi | **33,64 GiB** | 19,55 GiB |
+| Cache kontekstu | **29,48 GiB** = 1 389 553 tokenów; przy 65 536 tokenach na zapytanie mieści 21,2 równoczesnych zapytań | 7,9 GiB |
+| Grafy CUDA | 0,03 GiB faktycznie; vLLM szacował 1,19 GiB i o tyle zmniejszył cache (log podpowiada `--kv-cache-memory`) | — |
+
+Wydajność (jeden użytkownik, bez trybu rozumowania, odpowiedź do 256 tokenów):
+
+| Prompt [tok] | TTFT cold [s] | TTFT warm [s] | Decode [tok/s] | NVFP4: TTFT cold / decode |
+|---|---|---|---|---|
+| 1 592 | 0,55 | 0,23 | 51,9 | 0,34 s / 79,2 |
+| 6 243 | 1,64 | 0,30 | 50,7 | 1,08 s / 77,5 |
+| 25 143 | 6,89 | 0,34 | 47,2 | 5,08 s / 71,3 |
+
+Prefill ~3 650–3 800 tok/s przy 6–25k tokenów (efektywnie ~22–23 TFLOPS; NVFP4 ~30–35, 3.5).
+
+Start (kontener 23:06:11 → `Application startup complete` 23:13:42, **7 min 31 s**; bge-m3 gotowy ~1 min później):
+
+| Etap | Czas | Uwagi |
+|---|---|---|
+| Wczytanie wag | 272,9 s (z inicjalizacją 289,6 s) | 42 pliki po ~6,4 s; ~132 MB/s — to samo tempo co w 3.7, więc czas rośnie z rozmiarem wag (NVFP4: 150–157 s) |
+| `torch.compile` | 16,6 s | wynik zapisany w `/root/.cache/vllm/` w kontenerze — ginie przy `make down` (B2) |
+| Profilowanie i rozgrzewka | 44,2 s | |
+| Grafy CUDA | 53 s | dłużej niż 2–27 s w 3.7 |
+| Inicjalizacja silnika razem | 125,3 s | profilowanie + cache + grafy |
+
+Wnioski:
+- FP8 wobec NVFP4: decode o ~35% wolniejszy (47–52 wobec 71–79 tok/s), TTFT bez cache o 36–63% dłuższy, wagi +14 GiB, start ~2 min dłuższy. Zysk: prawie 4× więcej cache przy przydziale 0.55 — ale tylko dlatego, że w zestawie C model jest sam.
+- Ograniczeniem współbieżności w zestawie C jest `--max-num-seqs 16`, nie pamięć (cache na 21 zapytań po 64k).
+- Jakość FP8 wobec NVFP4 niezmierzona; jeśli nie będzie wyraźnie lepsza, do pracy z OpenCode wystarczy wariant NVFP4 (szybszy, mniejszy).
+
 ## 4. Sposób pracy i odtwarzalność
 
 ### 4.1 Dostęp: SSH z tunelami
@@ -436,7 +473,7 @@ Pamięć: vLLM widzi 121,69 GiB; w praktyce suma przydziałów ≤ ~0.85 (sekcja
 | gpt-oss-120b (MXFP4) | MoE, 5,1 mld aktywnych | **66,14 GiB** | **34–39 tok/s** | Apache 2.0 | porównanie z Qwen (jakość, tool calling) |
 | Qwen3-Coder-Next NVFP4 | MoE, 3 mld aktywnych, uwaga hybrydowa | ~43 GiB (wg autora wariantu GB10) | niezmierzony | Apache 2.0 (wg HF) | agent programistyczny (OpenCode) |
 | bge-m3 | embedding | **1,06 GiB** | — | MIT | RAG |
-| Qwen3.6-35B-A3B FP8 | jak wyżej | ~35 GiB | — | Apache 2.0 | zestaw C |
+| Qwen3.6-35B-A3B FP8 | jak wyżej | **33,64 GiB** (2026-10-13) | **47–52 tok/s** (3.9) | Apache 2.0 | zestaw C |
 | Qwen3.8-27B FP8, Qwen3-Coder-Next FP8 | jak wyżej | ~28 / ~75 GiB | — | Apache 2.0 | pobrane, poza zestawami (za duże obok innych modeli) |
 
 Wartości pogrubione: zmierzone 2026-10-11.
@@ -448,7 +485,7 @@ Wartości pogrubione: zmierzone 2026-10-11.
 | **B: SOFA** | :8000 Qwen3.6-35B-A3B + :8002 Qwen3.8-27B + :8004 Gemma 4 26B-A4B (NVFP4) + :8001 bge-m3 | 0.25 / 0.30 / 0.24 / 0.03 | 0.82 | praca nad SOFA | **zweryfikowany**: cache 7,9 / 12,5 / 12,8 GiB; przy testach z analitykami Gemmę wyłączyć (usunąć `vllm-8004` z `COMPOSE_PROFILES`) |
 | **D: kod** | :8003 Qwen3-Coder-Next + :8000 Qwen3.6-35B-A3B (NVFP4) + :8001 bge-m3 | 0.47 / 0.22 / 0.03 | 0.72 | praca z kodem w OpenCode | Coder-Next niezmierzony |
 | **A: gpt-oss** | :8000 gpt-oss-120b + :8001 bge-m3 | 0.66 / 0.03 | 0.69 | porównanie z zestawem B (ten sam test, przełączenie zestawu) | **zweryfikowany**: cache 7,0 GiB (3.5) |
-| **C: lekki start** | :8000 Qwen3.6-35B-A3B FP8 + :8001 bge-m3 | 0.55 / 0.06 | 0.61 | test łańcucha | niezmierzony |
+| **C: lekki start** | :8000 Qwen3.6-35B-A3B FP8 + :8001 bge-m3 | 0.55 / 0.06 | 0.61 | test łańcucha | **zmierzony 2026-10-13**: cache 29,5 GiB, decode 47–52 tok/s (3.9) |
 
 Przełączanie zestawów: `make down && make drop-caches && make up-ui SET=x` (ok. 5–15 min ładowania). Usługi startują po kolei: `vllm-8000` → `embed-8001` → `vllm-8002` → `vllm-8004` (`vllm-8003` po `embed-8001`).
 
