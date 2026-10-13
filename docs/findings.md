@@ -356,7 +356,7 @@ Wnioski:
 | Generowanie w sesji 23:24–23:40 | jedno zapytanie: mediana **47,9 tok/s** (maks. 52,9; 10 okien); dwa równoczesne: łącznie **76,4–77,4 tok/s** (6 okien) | log vLLM, okna 10 s bez prefillu (`Avg prompt throughput: 0`) |
 | Proporcja promptu do odpowiedzi | ~114 tys. tokenów prefillu wobec ~17 tys. wygenerowanych (~7 : 1; szacunek: suma średnich z okien 10 s × 10 s) | log vLLM |
 | Pamięć i system (23:40) | 80 GiB użyte, 40 GiB dostępne, swap 137 MiB (przy zestawie B 9,2 GiB), PSI 0,00, load 0,37 / 20 rdzeni; parametry GPU: sekcja 1 | `free -h`, `/sys/fs/cgroup/memory.pressure`, `uptime` |
-| Kontekst | zajęcie cache do 3,2% (≈ 44 tys. tokenów z 1,39 mln — szacunek z odsetka); prefix cache trafia w ~36–46% tokenów promptu | log vLLM (`GPU KV cache usage`, `Prefix cache hit rate`) |
+| Kontekst | zajęcie cache do 3,2% (≈ 44 tys. tokenów z 1,39 mln — szacunek z odsetka); prefix cache trafia w ~36–67% tokenów promptu (rośnie w trakcie sesji) | log vLLM (`GPU KV cache usage`, `Prefix cache hit rate`) |
 
 Wnioski:
 - Zestaw C wystarcza do pracy z OpenCode; Coder-Next (zestaw D) nie jest do tego konieczny — porównanie jakości kodu Qwen3.6 i Coder-Next wciąż do zrobienia (krok 9).
