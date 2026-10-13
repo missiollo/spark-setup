@@ -342,6 +342,22 @@ Wnioski:
 - Ograniczeniem współbieżności w zestawie C jest `--max-num-seqs 16`, nie pamięć (cache na 21 zapytań po 64k).
 - Jakość FP8 wobec NVFP4 niezmierzona; jeśli nie będzie wyraźnie lepsza, do pracy z OpenCode wystarczy wariant NVFP4 (szybszy, mniejszy).
 
+### 3.10 OpenCode na Macu z zestawem C (2026-10-13)
+
+Łańcuch: OpenCode 1.19.0 (`brew install sst/tap/opencode`) na Macu → tunel `ssh -N spark` → :8000 Qwen3.6-35B-A3B FP8. Konfiguracja `~/.config/opencode/opencode.json` z `clients/opencode.json.example`, `model` i `small_model` = `spark/qwen3.6-35b-a3b` (6.3).
+
+| Element | Wynik | Źródło |
+|---|---|---|
+| Działanie | **działa** — zadanie testowe: budowa gry Minesweeper (w toku; ocena jakości kodu po zakończeniu) | zgłoszenie użytkownika |
+| Tool calling | poprawne `tool_calls` (parser `qwen3_coder`), test przez `curl` z narzędziem `read_file` | odpowiedź API |
+| Zapytania 23:23–23:31 | 6× `POST /v1/chat/completions` (po dwa naraz: główny model i `small_model`), wszystkie `200 OK`; bez błędów i ostrzeżeń w logu | `docker logs spark-8000-qwen3.6-35b-a3b` |
+| Generowanie | ~41–51 tok/s przy jednym zapytaniu (jak w `make bench`, 3.9); przy dwóch równoczesnych (OpenCode + `small_model`, np. tytuł sesji) łącznie ~77 tok/s | log vLLM (`Avg generation throughput`, średnie z 10 s) |
+| Kontekst | zajęcie cache do 3,2% (≈ 44 tys. tokenów z 1,39 mln — szacunek z odsetka); prefix cache trafia w ~36–46% tokenów promptu | log vLLM (`GPU KV cache usage`, `Prefix cache hit rate`) |
+
+Wnioski:
+- Zestaw C wystarcza do pracy z OpenCode; Coder-Next (zestaw D) nie jest do tego konieczny — porównanie jakości kodu Qwen3.6 i Coder-Next wciąż do zrobienia (krok 9).
+- Prompt OpenCode jest duży (instrukcje systemowe + definicje narzędzi; w jednym 10-sekundowym oknie ~26 tys. tokenów prefillu — szacunek z `Avg prompt throughput`), więc TTFT kolejnych kroków zależy głównie od prefix cache; kontekst 64k (`LLM_MAX_LEN`) wystarcza, 32k w zestawach B i D może być ciasne przy dłuższych sesjach (niezmierzone).
+
 ## 4. Sposób pracy i odtwarzalność
 
 ### 4.1 Dostęp: SSH z tunelami
@@ -542,7 +558,7 @@ Przeniesiona do [`backlog.md`](backlog.md) (sekcja „Kolejność kroków”).
 | B | `spark/qwen3.6-35b-a3b-nvfp4` | `spark/qwen3.6-35b-a3b-nvfp4` |
 | A | `spark/gpt-oss-120b` | `spark/gpt-oss-120b` |
 
-- Tool calling na zestawie C sprawdzony 2026-10-13 przez API (`curl` z narzędziem `read_file`): `finish_reason: tool_calls`, poprawne argumenty; parser `qwen3_coder` działa.
+- OpenCode 1.19.0 z zestawem C działa (2026-10-13, 3.10). Tool calling sprawdzony też przez API (`curl` z narzędziem `read_file`): `finish_reason: tool_calls`, poprawne argumenty; parser `qwen3_coder` działa.
 
 ### 6.4 Sieć i bezpieczeństwo
 
