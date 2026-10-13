@@ -22,8 +22,9 @@ tags: [dgx-spark, recovery, audyt, poc, sofa, vllm, modele, ssh, opencode, open-
 | Dysk | 3,67 TB, jedna partycja `/` |
 | Architektura | ARM64 (aarch64) |
 | Pobór mocy GPU na biegu jałowym | **10,6 W** (`nvidia-smi`, 2026-10-11 23:51, 0% utylizacji, 43 °C, zestaw B wczytany) |
+| GPU pod obciążeniem (decode) | **30,6–32,4 W, 50–52 °C**, 96% utylizacji, zegar 2528 / 3003 MHz, stan P0 (`nvidia-smi`, 2026-10-13 23:40, zestaw C, OpenCode generuje ~43 tok/s); strefy `acpitz` 48–54 °C; brak oznak dławienia |
 
-GB10 nie raportuje `power.limit` ani poboru całego urządzenia (`[N/A]`), więc zużycie z zasilaczem, RAM i SSD jest nieznane — szacunkowo 25–40 W na biegu jałowym. Decyzja o pozostawieniu Sparka włączonego na noc: `backlog.md` B14 (koszt prądu niski wobec 10–15 min startu zestawu; brak Wake-on-LAN).
+Przy generowaniu GPU pokazuje 96% utylizacji przy ~32 W — decode ogranicza przepustowość pamięci, nie moc obliczeniowa, więc układ mało się grzeje. GB10 nie raportuje `power.limit` ani poboru całego urządzenia (`[N/A]`), więc zużycie z zasilaczem, RAM i SSD jest nieznane — szacunkowo 25–40 W na biegu jałowym. Decyzja o pozostawieniu Sparka włączonego na noc: `backlog.md` B14 (koszt prądu niski wobec 10–15 min startu zestawu; brak Wake-on-LAN).
 
 ## 2. Audyt stanu przy przejęciu (2026-10-11)
 
@@ -352,10 +353,15 @@ Wnioski:
 | Tool calling | poprawne `tool_calls` (parser `qwen3_coder`), test przez `curl` z narzędziem `read_file` | odpowiedź API |
 | Zapytania 23:23–23:31 | 6× `POST /v1/chat/completions` (po dwa naraz: główny model i `small_model`), wszystkie `200 OK`; bez błędów i ostrzeżeń w logu | `docker logs spark-8000-qwen3.6-35b-a3b` |
 | Generowanie | ~41–51 tok/s przy jednym zapytaniu (jak w `make bench`, 3.9); przy dwóch równoczesnych (OpenCode + `small_model`, np. tytuł sesji) łącznie ~77 tok/s | log vLLM (`Avg generation throughput`, średnie z 10 s) |
+| Generowanie w sesji 23:24–23:40 | jedno zapytanie: mediana **47,9 tok/s** (maks. 52,9; 10 okien); dwa równoczesne: łącznie **76,4–77,4 tok/s** (6 okien) | log vLLM, okna 10 s bez prefillu (`Avg prompt throughput: 0`) |
+| Proporcja promptu do odpowiedzi | ~114 tys. tokenów prefillu wobec ~17 tys. wygenerowanych (~7 : 1; szacunek: suma średnich z okien 10 s × 10 s) | log vLLM |
+| Pamięć i system (23:40) | 80 GiB użyte, 40 GiB dostępne, swap 137 MiB (przy zestawie B 9,2 GiB), PSI 0,00, load 0,37 / 20 rdzeni; parametry GPU: sekcja 1 | `free -h`, `/sys/fs/cgroup/memory.pressure`, `uptime` |
 | Kontekst | zajęcie cache do 3,2% (≈ 44 tys. tokenów z 1,39 mln — szacunek z odsetka); prefix cache trafia w ~36–46% tokenów promptu | log vLLM (`GPU KV cache usage`, `Prefix cache hit rate`) |
 
 Wnioski:
 - Zestaw C wystarcza do pracy z OpenCode; Coder-Next (zestaw D) nie jest do tego konieczny — porównanie jakości kodu Qwen3.6 i Coder-Next wciąż do zrobienia (krok 9).
+- Praca agentowa to głównie prefill: ~7× więcej tokenów promptu niż odpowiedzi, a prefix cache trafia w 36–67% — liczy się TTFT i prefix cache bardziej niż decode.
+- Dwa równoczesne zapytania dają łącznie ~1,6× więcej tokenów/s niż jedno (77 wobec 48) — zapas na drugiego użytkownika; test współbieżności: B11.
 - Prompt OpenCode jest duży (instrukcje systemowe + definicje narzędzi; w jednym 10-sekundowym oknie ~26 tys. tokenów prefillu — szacunek z `Avg prompt throughput`), więc TTFT kolejnych kroków zależy głównie od prefix cache; kontekst 64k (`LLM_MAX_LEN`) wystarcza, 32k w zestawach B i D może być ciasne przy dłuższych sesjach (niezmierzone).
 
 ## 4. Sposób pracy i odtwarzalność
