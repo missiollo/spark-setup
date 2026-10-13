@@ -68,9 +68,9 @@ code{font-size:12px}
 <div class="filters">
   <label>Port <select id="port">
     <option value="8000">8000 — model główny</option>
-    <option value="8002">8002 — Qwen3.8</option>
-    <option value="8003">8003 — Coder-Next</option>
-    <option value="8004">8004 — Gemma 4</option>
+    <option value="8002">8002 — jakość</option>
+    <option value="8003">8003 — kod</option>
+    <option value="8004">8004 — ogólny</option>
   </select></label>
   <label>Okno <select id="win">
     <option value="60">1 min</option>
@@ -253,6 +253,12 @@ function draw(){
   chart("c1","tip1",[{key:"gen",color:"--s1",label:"generowanie",short:"generowanie"}]);
   chart("c2","tip2",[{key:"comp",color:"--s2",label:"obliczone",short:"obliczone"},{key:"hit",color:"--s3",label:"z cache",short:"z cache"}],true);
   table()}
+// nazwy modeli w liście portów z /v1/models (zależą od zestawu); co 30 s, bo zestaw może się zmienić
+const ROLE={8000:"model główny",8002:"jakość",8003:"kod",8004:"ogólny"};
+async function labels(){for(const o of $("port").options){
+  try{const r=await fetch(`http://localhost:${o.value}/v1/models`,{cache:"no-store",signal:AbortSignal.timeout(3000)});
+    const id=(await r.json()).data?.[0]?.id;o.textContent=`${o.value} — ${id||ROLE[o.value]}`;o.disabled=false}
+  catch(e){o.textContent=`${o.value} — ${ROLE[o.value]} (nie działa)`}}}
 function restart(){S=[];prev=null;base=null;model="";clearInterval(timer);poll();timer=setInterval(poll,POLL)}
 $("port").addEventListener("change",restart);
 $("reset").addEventListener("click",restart);
@@ -260,6 +266,7 @@ $("win").addEventListener("change",draw);
 $("tbl").addEventListener("click",()=>{const c=$("tblCard");c.hidden=!c.hidden;$("tbl").setAttribute("aria-expanded",String(!c.hidden));table()});
 window.addEventListener("resize",draw);
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change",draw);
+labels();setInterval(labels,30000);
 restart();
 </script>
 </body>
