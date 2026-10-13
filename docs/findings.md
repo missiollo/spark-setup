@@ -564,7 +564,39 @@ Przeniesiona do [`backlog.md`](backlog.md) (sekcja „Kolejność kroków”).
 | B | `spark/qwen3.6-35b-a3b-nvfp4` | `spark/qwen3.6-35b-a3b-nvfp4` |
 | A | `spark/gpt-oss-120b` | `spark/gpt-oss-120b` |
 
-- Podgląd zużycia tokenów na żywo: `open clients/token-monitor.html` na Macu (przy otwartym tunelu). Strona co 2 s czyta `/metrics` vLLM (CORS `*`, bez serwera pośredniego) i pokazuje generowanie [tok/s], prompt obliczony / z prefix cache, średni TTFT, zapytania w toku i zajęcie KV cache. Metryki dotyczą całego portu, nie tylko OpenCode.
+- Podgląd zużycia tokenów na żywo: `clients/token-monitor.html` (opis i porównanie z Makiem: 6.3.1).
+
+#### 6.3.1 Monitor tokenów i porównanie Spark ↔ Mac
+
+`open clients/token-monitor.html` na Macu. Strona co 2 s czyta `/metrics` serwera modelu bezpośrednio z przeglądarki (vLLM i llama.cpp wysyłają `Access-Control-Allow-Origin: *`), bez serwera pośredniego. Metryki dotyczą całego portu (OpenCode, Open WebUI, `make bench` razem).
+
+| Źródło | Jak | Co widać |
+|---|---|---|
+| vLLM na Sparku | lista „Źródło”: porty 8000–8004 (nazwa modelu z `/v1/models`), tunel `ssh -N spark` | generowanie, prompt obliczony i z prefix cache, TTFT, zapytania, KV cache |
+| llama.cpp na Macu | „inny adres…” → `localhost:9931`; serwer z `--metrics` | generowanie, prompt obliczony, zapytania; **bez** prefix cache, TTFT i KV (llama.cpp ich nie publikuje) |
+| LM Studio | nieobsługiwane — brak `/metrics`; do porównań `bench/run_bench.py --base-url http://localhost:1234/v1` | — |
+
+Zapis: sesja trwa od otwarcia strony albo „Wyzeruj”. **Pobierz CSV** zapisuje całą sesję (do 24 h); ostatnia sesja z tokenami zapisuje się też w przeglądarce (do ~11 h) i po ponownym otwarciu strony jest do pobrania z paska „Poprzednia sesja”. Pliki do porównań: `bench/sessions/` (commitować jak wyniki `make bench`).
+
+Kolumny CSV (jeden wiersz na odczyt; tokeny to przyrost od poprzedniego odczytu, separator `,`, kropka dziesiętna):
+
+| Kolumna | Znaczenie |
+|---|---|
+| `endpoint`, `backend`, `model` | adres, `vllm` / `llama.cpp`, nazwa z `/v1/models` |
+| `time_utc`, `interval_s` | czas odczytu (UTC, ISO 8601), odstęp od poprzedniego (karta w tle: do ~60 s) |
+| `gen_tokens`, `gen_tok_s` | wygenerowane tokeny, tok/s |
+| `prompt_computed_tokens`, `prompt_computed_tok_s` | tokeny promptu faktycznie obliczone (prefill) |
+| `prompt_cached_tokens`, `prompt_cached_tok_s` | tokeny promptu z prefix cache; puste dla llama.cpp |
+| `requests_running`, `requests_waiting` | zapytania w toku / w kolejce |
+| `kv_cache_perc` | zajęcie KV cache [%]; puste dla llama.cpp |
+
+Porównanie pracy agentowej (to samo zadanie w OpenCode na obu maszynach):
+1. Mac: `brew install llama.cpp`, potem `llama-server -hf unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q4_K_M --port 9931 --metrics --jinja -c 65536` (`--jinja` potrzebne do tool calling; port inny niż 8080, który zajmuje tunel do Open WebUI). Wariant GGUF zgodny z `models.yaml` → `variants.mac`; plik `UD-Q4_K_M` ma 22,1 GB (mieści się w 48 GB Maca).
+2. W OpenCode model `mac/qwen3.6-35b-a3b-gguf` (dostawca `mac` we wzorze `clients/opencode.json.example`); na Sparku `spark/qwen3.6-35b-a3b` (zestaw C).
+3. Przed zadaniem „Wyzeruj”, po zadaniu „Pobierz CSV”; to samo polecenie w nowej sesji (`/new`) na obu maszynach.
+4. Porównać: suma `gen_tokens` i `prompt_computed_tokens`, czas od pierwszego do ostatniego wiersza z tokenami, mediana `gen_tok_s` w wierszach z `requests_running` ≥ 1, efekt (czy kod działa).
+
+Uwaga: llama.cpp liczy w `prompt_tokens_total` tylko tokeny obliczone, vLLM — wszystkie (monitor odejmuje trafienia cache), więc kolumny `prompt_computed_*` są porównywalne, a całkowitej długości promptu na Macu monitor nie zna.
 - OpenCode 1.19.0 z zestawem C działa (2026-10-13, 3.10). Tool calling sprawdzony też przez API (`curl` z narzędziem `read_file`): `finish_reason: tool_calls`, poprawne argumenty; parser `qwen3_coder` działa.
 
 ### 6.4 Sieć i bezpieczeństwo

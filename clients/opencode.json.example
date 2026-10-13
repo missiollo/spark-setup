@@ -82,6 +82,23 @@
           }
         }
       }
+    },
+    "mac": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Mac: llama.cpp :9931 (llama-server)",
+      "options": {
+        "baseURL": "http://localhost:9931/v1",
+        "apiKey": "none"
+      },
+      "models": {
+        "qwen3.6-35b-a3b-gguf": {
+          "name": "Qwen3.6-35B-A3B GGUF UD-Q4_K_M (Mac)",
+          "limit": {
+            "context": 65536,
+            "output": 16384
+          }
+        }
+      }
     }
   },
   "model": "spark-coder/qwen3-coder-next-nvfp4",

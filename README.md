@@ -43,9 +43,9 @@ Na Macu (przez tunel): `curl localhost:8000/v1/models`, OpenCode z `clients/open
 | `compose.yaml` | usługi `vllm-8000`, `embed-8001`, `vllm-8002`, `vllm-8003`, `vllm-8004`, `open-webui` (:8080); kontenery `spark-<port>-<model>`; porty tylko na `127.0.0.1` |
 | `scripts/download_models.py` | pobieranie z manifestu (uruchamiane w kontenerze przez `make models`) |
 | `scripts/render_env.py` | składa `.run.env` z `.env` + profilu + `models.yaml` |
-| `bench/run_bench.py` | TTFT (zimny i z prefix cache) i tok/s; wyniki JSON w `bench/results/` |
+| `bench/run_bench.py` | TTFT (zimny i z prefix cache) i tok/s; wyniki JSON w `bench/results/`; sesje z monitora tokenów (CSV) w `bench/sessions/` |
 | `ssh/` | wpis do `~/.ssh/config` z tunelami, klucze publiczne |
-| `clients/` | konfiguracja OpenCode dla endpointu Sparka; `token-monitor.html` — wykres na żywo tokenów promptu i generowania z `/metrics` vLLM (`open clients/token-monitor.html` na Macu, przy otwartym tunelu) |
+| `clients/` | konfiguracja OpenCode dla endpointu Sparka; `token-monitor.html` — wykres na żywo tokenów z `/metrics` vLLM (Spark, przez tunel) albo llama.cpp (Mac), eksport sesji do CSV (`docs/findings.md` 6.3.1) |
 
 ## Zestawy
 

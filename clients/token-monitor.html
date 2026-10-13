@@ -3,12 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Monitor tokenów vLLM</title>
+<title>Monitor tokenów</title>
 <!--
-  Monitor na żywo: tokeny promptu i generowania z /metrics vLLM (przez tunel ssh -N spark).
+  Monitor na żywo: tokeny promptu i generowania z /metrics serwera modelu.
+  Obsługiwane: vLLM na Sparku (przez tunel ssh -N spark, porty 8000–8004) oraz llama.cpp
+  na Macu (llama-server --metrics, adres wpisany w „inny…”). LM Studio nie udostępnia /metrics.
   Otwarcie na Macu: open clients/token-monitor.html
   Metryki są wspólne dla wszystkich klientów danego portu (OpenCode, Open WebUI, make bench);
   przy pracy samego OpenCode pokazują jego zużycie.
+  Sesja (od otwarcia albo „Wyzeruj”) do pobrania jako CSV; ostatnia sesja zapisuje się w przeglądarce.
 -->
 <style>
 :root{color-scheme:light;
@@ -32,6 +35,9 @@ h1{font-size:20px;font-weight:600;margin:0}
 select,button{font:inherit;color:var(--text-primary);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 10px}
 button{cursor:pointer}
 #status{margin-left:auto;display:flex;align-items:center;gap:6px}
+input{font:inherit;color:var(--text-primary);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 8px;width:150px}
+.saved{font-size:12px;color:var(--text-secondary);margin:-6px 0 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.saved button{padding:2px 8px;font-size:12px}
 #status i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-muted)}
 #status.ok i{background:var(--good)}#status.err i{background:var(--danger)}
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin-bottom:14px}
@@ -62,16 +68,18 @@ code{font-size:12px}
 </head>
 <body>
 <main>
-<h1>Monitor tokenów vLLM</h1>
-<p class="sub" id="sub">Odczyt <code>/metrics</code> co 2 s przez tunel SSH. Liczby od otwarcia strony.</p>
+<h1>Monitor tokenów</h1>
+<p class="sub" id="sub">Odczyt <code>/metrics</code> (vLLM albo llama.cpp) co 2 s. Liczby od otwarcia strony albo „Wyzeruj”.</p>
 
 <div class="filters">
-  <label>Port <select id="port">
-    <option value="8000">8000 — model główny</option>
-    <option value="8002">8002 — jakość</option>
-    <option value="8003">8003 — kod</option>
-    <option value="8004">8004 — ogólny</option>
+  <label>Źródło <select id="port">
+    <option value="localhost:8000">8000 — model główny</option>
+    <option value="localhost:8002">8002 — jakość</option>
+    <option value="localhost:8003">8003 — kod</option>
+    <option value="localhost:8004">8004 — ogólny</option>
+    <option value="custom">inny adres…</option>
   </select></label>
+  <input id="custom" type="text" value="localhost:9931" aria-label="Adres host:port" hidden>
   <label>Okno <select id="win">
     <option value="60">1 min</option>
     <option value="300" selected>5 min</option>
@@ -79,8 +87,11 @@ code{font-size:12px}
   </select></label>
   <button id="reset" type="button">Wyzeruj</button>
   <button id="tbl" type="button" aria-expanded="false">Tabela</button>
+  <button id="csv" type="button">Pobierz CSV</button>
   <span id="status" role="status"><i></i><span id="stxt">łączenie…</span></span>
 </div>
+
+<div class="saved" id="saved" hidden><span id="savedTxt"></span><button id="savedCsv" type="button">Pobierz CSV</button><button id="savedDel" type="button">Usuń</button></div>
 
 <div class="tiles">
   <div class="tile"><p>Generowanie teraz</p><div id="tGen">–</div><small>tok/s, średnia z 10 s</small></div>
@@ -111,13 +122,14 @@ code{font-size:12px}
   <table><thead><tr><th>Czas</th><th>Generowanie [tok/s]</th><th>Prefill [tok/s]</th><th>Z cache [tok/s]</th><th>W toku</th><th>KV cache</th></tr></thead><tbody id="tbody"></tbody></table>
 </div>
 
-<p class="foot">Źródło: <code>vllm:generation_tokens_total</code>, <code>vllm:prompt_tokens_total</code>, <code>vllm:prefix_cache_hits_total</code>, <code>vllm:time_to_first_token_seconds</code>, <code>vllm:num_requests_*</code>, <code>vllm:kv_cache_usage_perc</code>. Prędkości to różnice liczników między odczytami. Wymaga otwartego tunelu <code>ssh -N spark</code>. Dane tylko w tej karcie przeglądarki.</p>
+<p class="foot">vLLM: <code>vllm:generation_tokens_total</code>, <code>vllm:prompt_tokens_total</code>, <code>vllm:prefix_cache_hits_total</code>, <code>vllm:time_to_first_token_seconds</code>, <code>vllm:num_requests_*</code>, <code>vllm:kv_cache_usage_perc</code> (porty Sparka wymagają tunelu <code>ssh -N spark</code>). llama.cpp (<code>llama-server --metrics</code>): <code>llamacpp:tokens_predicted_total</code>, <code>llamacpp:prompt_tokens_total</code> (tylko tokeny obliczone — brak danych o cache i TTFT), <code>llamacpp:requests_*</code>. Prędkości to różnice liczników między odczytami. Sesja do pobrania jako CSV; ostatnia zapisuje się w tej przeglądarce (opis kolumn: <code>findings.md</code> 6.3).</p>
 </main>
 
 <script>
 const POLL=2000, KEEP=900; // co 2 s; bufor 15 min
 const $=id=>document.getElementById(id);
-let S=[], prev=null, base=null, timer=null, model="";
+let S=[], ALL=[], prev=null, base=null, timer=null, model="", backend="", polls=0, started=null;
+const ALL_MAX=43200, SAVE_MAX=20000, KEY="tokmon.last"; // pełna sesja do 24 h; w przeglądarce do ~11 h
 
 // Prometheus: suma wartości metryki po wszystkich zestawach etykiet
 function parse(txt){const m={};
@@ -127,27 +139,40 @@ function parse(txt){const m={};
     if(b>=0&&!model){const mm=k.match(/model_name="([^"]+)"/);if(mm)model=mm[1]}
     m[name]=(m[name]||0)+v}
   return m}
-const pick=m=>({t:Date.now(),
-  gen:m["vllm:generation_tokens_total"]||0, pr:m["vllm:prompt_tokens_total"]||0,
-  hit:m["vllm:prefix_cache_hits_total"]||0, tts:m["vllm:time_to_first_token_seconds_sum"]||0,
-  ttc:m["vllm:time_to_first_token_seconds_count"]||0, run:m["vllm:num_requests_running"]||0,
-  wait:m["vllm:num_requests_waiting"]||0, kv:m["vllm:kv_cache_usage_perc"]||0});
+// vLLM: prompt_tokens = wszystkie tokeny promptu, z czego hits z prefix cache.
+// llama.cpp: prompt_tokens_total = tokeny faktycznie obliczone; cache, TTFT i KV niedostępne (null).
+function pick(m){const t=Date.now();
+  if("vllm:generation_tokens_total" in m){backend="vllm";
+    return{t,gen:m["vllm:generation_tokens_total"]||0,pr:m["vllm:prompt_tokens_total"]||0,
+      hit:m["vllm:prefix_cache_hits_total"]||0,tts:m["vllm:time_to_first_token_seconds_sum"]||0,
+      ttc:m["vllm:time_to_first_token_seconds_count"]||0,run:m["vllm:num_requests_running"]||0,
+      wait:m["vllm:num_requests_waiting"]||0,kv:m["vllm:kv_cache_usage_perc"]||0}}
+  if("llamacpp:tokens_predicted_total" in m){backend="llama.cpp";
+    return{t,gen:m["llamacpp:tokens_predicted_total"]||0,pr:m["llamacpp:prompt_tokens_total"]||0,
+      hit:null,tts:null,ttc:null,run:m["llamacpp:requests_processing"]||0,wait:m["llamacpp:requests_deferred"]||0,kv:null}}
+  throw new Error("nieznany format /metrics (ani vLLM, ani llama.cpp)")}
+const addr=()=>$("port").value==="custom"?$("custom").value.trim():$("port").value;
 
 async function poll(){
-  const port=$("port").value;
+  const port=addr();
   try{
-    const r=await fetch(`http://localhost:${port}/metrics`,{cache:"no-store"});
+    const r=await fetch(`http://${port}/metrics`,{cache:"no-store",signal:AbortSignal.timeout(5000)});
     if(!r.ok)throw new Error("HTTP "+r.status);
     const c=pick(parse(await r.text()));
-    if(!base)base=c;
-    if(prev){const dt=(c.t-prev.t)/1000,dg=c.gen-prev.gen,dp=c.pr-prev.pr,dh=c.hit-prev.hit;
-      if(dg<0||dp<0){base=c}// restart vLLM: liczniki od zera
-      else{S.push({t:c.t,gen:dg/dt,comp:Math.max(dp-dh,0)/dt,hit:dh/dt,run:c.run,wait:c.wait,kv:c.kv});
-        if(S.length>KEEP)S.shift()}}
+    if(!model){try{const j=await (await fetch(`http://${port}/v1/models`,{cache:"no-store",signal:AbortSignal.timeout(3000)})).json();model=j.data?.[0]?.id||""}catch(e){}}
+    if(!base){base=c;started=c.t}
+    if(prev){const dt=(c.t-prev.t)/1000,dg=c.gen-prev.gen,dp=c.pr-prev.pr,dh=c.hit==null?0:c.hit-prev.hit;
+      if(dg<0||dp<0){base=c}// restart serwera: liczniki od zera
+      else{S.push({t:c.t,gen:dg/dt,comp:Math.max(dp-dh,0)/dt,hit:dh/dt,run:c.run,wait:c.wait,kv:c.kv??0});
+        if(S.length>KEEP)S.shift();
+        ALL.push([new Date(c.t).toISOString(),dt.toFixed(2),Math.round(dg),Math.round(Math.max(dp-dh,0)),c.hit==null?"":Math.round(dh),
+          (dg/dt).toFixed(1),(Math.max(dp-dh,0)/dt).toFixed(1),c.hit==null?"":(dh/dt).toFixed(1),c.run,c.wait,c.kv==null?"":(c.kv*100).toFixed(1)]);
+        if(ALL.length>ALL_MAX)ALL.shift();
+        if(++polls%5===0)save()}}
     prev=c;
-    setStatus("ok",`połączono · ${model||"model"} · :${port}`);
+    setStatus("ok",`połączono · ${model||"model"} · ${backend} · ${port}`);
     tiles(c);
-  }catch(e){setStatus("err",`brak połączenia z localhost:${port} — tunel otwarty? model działa?`)}
+  }catch(e){setStatus("err",/nieznany/.test(e.message)?`${port}: ${e.message}`:`brak połączenia z ${port} — tunel otwarty? model działa? (llama.cpp: --metrics)`)}
   draw();
 }
 function setStatus(cls,t){$("status").className=cls;$("stxt").textContent=t}
@@ -158,15 +183,15 @@ const f1=v=>v>=100?f0(v):v.toLocaleString("pl-PL",{maximumFractionDigits:1,minim
 function tiles(c){
   const last=S.slice(-5), g=last.length?last.reduce((a,x)=>a+x.gen,0)/last.length:0;
   $("tGen").textContent=f1(g);
-  const out=c.gen-base.gen, inn=c.pr-base.pr, hit=c.hit-base.hit, n=c.ttc-base.ttc;
+  const out=c.gen-base.gen, inn=c.pr-base.pr, hit=c.hit==null?null:c.hit-base.hit, n=c.ttc==null?null:c.ttc-base.ttc;
   $("tOut").textContent=f0(out);
   $("tIn").textContent=f0(inn);
   $("tInS").textContent=out>0?`tokenów od otwarcia · ${f1(inn/out)} : 1 do odpowiedzi`:"tokenów od otwarcia";
-  $("tHit").textContent=inn>0?f0(hit/inn*100)+"%":"–";
-  $("tTtft").textContent=n>0?f1((c.tts-base.tts)/n)+" s":"–";
-  $("tReq").textContent="zapytań: "+f0(n);
+  $("tHit").textContent=hit==null?"brak danych":inn>0?f0(hit/inn*100)+"%":"–";
+  $("tTtft").textContent=n==null?"brak danych":n>0?f1((c.tts-base.tts)/n)+" s":"–";
+  $("tReq").textContent=n==null?backend:"zapytań: "+f0(n);
   $("tRun").textContent=`${f0(c.run)} / ${f0(c.wait)}`;
-  $("tKv").textContent="KV cache: "+f1(c.kv*100)+"%";
+  $("tKv").textContent=c.kv==null?"KV cache: brak danych":"KV cache: "+f1(c.kv*100)+"%";
 }
 
 // skala: krok podziałki 1/2/5 × 10^n, oś Y = 4 kroki
@@ -255,18 +280,43 @@ function draw(){
   table()}
 // nazwy modeli w liście portów z /v1/models (zależą od zestawu); co 30 s, bo zestaw może się zmienić
 const ROLE={8000:"model główny",8002:"jakość",8003:"kod",8004:"ogólny"};
-async function labels(){for(const o of $("port").options){
-  try{const r=await fetch(`http://localhost:${o.value}/v1/models`,{cache:"no-store",signal:AbortSignal.timeout(3000)});
-    const id=(await r.json()).data?.[0]?.id;o.textContent=`${o.value} — ${id||ROLE[o.value]}`;o.disabled=false}
-  catch(e){o.textContent=`${o.value} — ${ROLE[o.value]} (nie działa)`}}}
-function restart(){S=[];prev=null;base=null;model="";clearInterval(timer);poll();timer=setInterval(poll,POLL)}
-$("port").addEventListener("change",restart);
+async function labels(){for(const o of $("port").options){if(o.value==="custom")continue;const port=o.value.split(":")[1];
+  try{const r=await fetch(`http://${o.value}/v1/models`,{cache:"no-store",signal:AbortSignal.timeout(3000)});
+    const id=(await r.json()).data?.[0]?.id;o.textContent=`${port} — ${id||ROLE[port]}`}
+  catch(e){o.textContent=`${port} — ${ROLE[port]} (nie działa)`}}}
+// --- zapis sesji: CSV (separator „,”, kropka dziesiętna) i ostatnia sesja w localStorage
+const COLS=["time_utc","interval_s","gen_tokens","prompt_computed_tokens","prompt_cached_tokens","gen_tok_s","prompt_computed_tok_s","prompt_cached_tok_s","requests_running","requests_waiting","kv_cache_perc"];
+function csvText(meta,rows){const q=v=>/[",\n]/.test(String(v))?`"${String(v).replace(/"/g,'""')}"`:v;
+  const head=["endpoint","backend","model",...COLS].join(",");
+  return head+"\n"+rows.map(r=>[meta.endpoint,meta.backend,meta.model,...r].map(q).join(",")).join("\n")+"\n"}
+function download(meta,rows){if(!rows.length)return;
+  const d=new Date(meta.started||Date.now()),p=n=>String(n).padStart(2,"0");
+  const stamp=`${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+  const name=`tokens-${stamp}-${meta.backend||"x"}-${(meta.model||"model").replace(/[^\w.-]+/g,"_")}.csv`;
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csvText(meta,rows)],{type:"text/csv"}));a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+const meta=()=>({endpoint:addr(),backend,model,started});
+function save(){if(!ALL.some(r=>r[2]>0||r[3]>0))return;// bezczynna sesja nie nadpisuje poprzedniej
+  try{localStorage.setItem(KEY,JSON.stringify({...meta(),rows:ALL.slice(-SAVE_MAX)}))}catch(e){}}
+function showSaved(){let o=null;try{o=JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){}
+  if(!o||!o.rows?.length){$("saved").hidden=true;return}
+  $("savedTxt").textContent=`Poprzednia sesja: ${o.model||"model"} (${o.backend}, ${o.endpoint}), ${hhmmss(o.started)} – ${hhmmss(Date.parse(o.rows[o.rows.length-1][0]))}, odczytów: ${o.rows.length}`;
+  $("savedCsv").onclick=()=>download(o,o.rows);
+  $("savedDel").onclick=()=>{try{localStorage.removeItem(KEY)}catch(e){}$("saved").hidden=true};
+  $("saved").hidden=false}
+$("csv").addEventListener("click",()=>download(meta(),ALL));
+window.addEventListener("pagehide",save);
+function restart(){save();showSaved();S=[];ALL=[];prev=null;base=null;model="";backend="";polls=0;started=null;clearInterval(timer);poll();timer=setInterval(poll,POLL)}
+$("port").addEventListener("change",()=>{$("custom").hidden=$("port").value!=="custom";
+  if($("port").value==="custom"){try{const v=localStorage.getItem("tokmon.custom");if(v)$("custom").value=v}catch(e){}}restart()});
+$("custom").addEventListener("change",()=>{try{localStorage.setItem("tokmon.custom",$("custom").value.trim())}catch(e){}restart()});
 $("reset").addEventListener("click",restart);
 $("win").addEventListener("change",draw);
 $("tbl").addEventListener("click",()=>{const c=$("tblCard");c.hidden=!c.hidden;$("tbl").setAttribute("aria-expanded",String(!c.hidden));table()});
 window.addEventListener("resize",draw);
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change",draw);
 labels();setInterval(labels,30000);
+showSaved();
 restart();
 </script>
 </body>
