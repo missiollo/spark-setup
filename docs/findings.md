@@ -437,6 +437,9 @@ Wnioski:
 - Rozrzut decode między dwoma przebiegami tego samego modelu (79–107 tok/s) przy odpowiedziach ~50 tokenów (~0,5 s) — pojedyncze liczby traktować orientacyjnie; trend jest stały.
 - gpt-oss przez Ollamę działa na `llama-server` z `-b 512 -ub 512` — małe paczki prefillu; większe `-ub` mogłyby skrócić TTFT (niesprawdzone, Ollama nie udostępnia tej opcji wprost).
 - **Ollama używa dekodowania spekulacyjnego (MTP) automatycznie** dla Qwen3.8 (`qwen3.8:27b-nvfp4`, MLX): w logu serwera `speculative decode stats`, akceptacja 68–83%, ~2 tokeny na krok. Wynik: decode **39,4 / 44,5 / 41,1 tok/s** cold (~1,6k / 6k / 25k), warm 37,5–51,3 — 2× więcej niż bez MTP w `mlx_lm.server` (18–21, 3.11) i ponad sufit przepustowości bez spekulacji (~22 tok/s), 3× więcej niż Spark (12,4–12,6, bez MTP). TTFT bez zmian: 7,40 / 31,14 / 132,45 s (Spark 1,44 / 2,60 / 11,99). Wynik `bench/results/20261014-1530-…-qwen3.8-27b-nvfp4.json`. Nieporównywalne 1:1 ze Sparkiem; uzasadnia test MTP na Sparku (B15). Dla Qwen3.6 w Ollamie wpisów o spekulacji w logu nie było.
+- **Gemma 4 26B-A4B** (`gemma4:26b-nvfp4`, MLX, też z MTP wg logu): TTFT 1,31 / 5,02 / 23,02 s (Spark 0,24 / 0,93 / 4,40 — Spark 5× szybszy); decode 57–110 tok/s, ale **niewiarygodny** — model odpowiadał tylko 12–15 tokenami (~0,15 s pomiaru); Spark 28,8–30,5 tok/s. Do powtórzenia z dłuższą odpowiedzią (`--max-tokens` i prompt wymuszający dłuższy tekst).
+- **Qwen3.6 GGUF Q4_K_M** (`qwen3.6:35b-a3b-q4_K_M`, Ollama → `llama-server`, bez MTP): TTFT 1,37 / 4,75 / 23,87 s, decode 82,7 / 74,1 / 68,5 tok/s — nieco wolniej niż ten sam model w NVFP4 na MLX (~80–107 tok/s, TTFT 25k ~21 s). Plik GGUF w `~/.ollama/models/blobs/` nadaje się do `llama-server --metrics` (monitor tokenów, B17).
+- Wyniki: `bench/results/20261014-1538-…-gemma4-26b-nvfp4.json`, `20261014-1549-…-ollama-gguf-qwen3.6-35b-a3b-q4_K_M.json`.
 
 ## 4. Sposób pracy i odtwarzalność
 
