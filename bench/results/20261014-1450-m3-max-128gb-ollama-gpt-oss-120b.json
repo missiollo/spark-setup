@@ -1,0 +1,72 @@
+{
+  "timestamp": "2026-10-14T14:50:53",
+  "platform": "m3-max-128gb-ollama",
+  "client_host": "MacBook-Pro-Michal.local",
+  "client_os": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "endpoint": "http://localhost:11500/v1",
+  "model": "gpt-oss:120b",
+  "thinking": false,
+  "max_tokens": 256,
+  "results": [
+    {
+      "prompt_tokens": 1579,
+      "completion_tokens": 97,
+      "ttft_s": 2.445,
+      "decode_s": 1.683,
+      "decode_tok_s": 57.0,
+      "total_s": 4.129,
+      "target_tokens": 1000,
+      "mode": "cold"
+    },
+    {
+      "prompt_tokens": 1579,
+      "completion_tokens": 97,
+      "ttft_s": 0.087,
+      "decode_s": 1.662,
+      "decode_tok_s": 57.8,
+      "total_s": 1.749,
+      "target_tokens": 1000,
+      "mode": "warm"
+    },
+    {
+      "prompt_tokens": 6006,
+      "completion_tokens": 112,
+      "ttft_s": 8.157,
+      "decode_s": 2.217,
+      "decode_tok_s": 50.1,
+      "total_s": 10.374,
+      "target_tokens": 4000,
+      "mode": "cold"
+    },
+    {
+      "prompt_tokens": 6006,
+      "completion_tokens": 112,
+      "ttft_s": 0.117,
+      "decode_s": 2.19,
+      "decode_tok_s": 50.7,
+      "total_s": 2.307,
+      "target_tokens": 4000,
+      "mode": "warm"
+    },
+    {
+      "prompt_tokens": 23705,
+      "completion_tokens": 108,
+      "ttft_s": 46.16,
+      "decode_s": 2.331,
+      "decode_tok_s": 45.9,
+      "total_s": 48.491,
+      "target_tokens": 16000,
+      "mode": "cold"
+    },
+    {
+      "prompt_tokens": 23705,
+      "completion_tokens": 108,
+      "ttft_s": 0.225,
+      "decode_s": 2.277,
+      "decode_tok_s": 47.0,
+      "total_s": 2.502,
+      "target_tokens": 16000,
+      "mode": "warm"
+    }
+  ]
+}

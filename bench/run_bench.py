@@ -47,7 +47,7 @@ def build_prompt(approx_tokens: int, nonce: str) -> str:
     return "".join(lines) + QUESTION
 
 
-def run_one(base: str, model: str, prompt: str, max_tokens: int, thinking: bool) -> dict:
+def run_one(base: str, model: str, prompt: str, max_tokens: int, thinking: bool, effort_none: bool = False) -> dict:
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
@@ -57,6 +57,9 @@ def run_one(base: str, model: str, prompt: str, max_tokens: int, thinking: bool)
         "stream_options": {"include_usage": True},
         "chat_template_kwargs": {"enable_thinking": thinking},
     }
+    # Ollama ignoruje chat_template_kwargs; rozumowanie wyłącza tam tylko reasoning_effort="none"
+    if effort_none and not thinking:
+        payload["reasoning_effort"] = "none"
     t0 = time.perf_counter()
     t_first = None
     usage = {}
@@ -96,6 +99,8 @@ def main() -> None:
     p.add_argument("--lengths", type=int, nargs="+", default=[1000, 4000, 16000])
     p.add_argument("--max-tokens", type=int, default=256)
     p.add_argument("--thinking", action="store_true", help="włącz tryb rozumowania (domyślnie wyłączony)")
+    p.add_argument("--reasoning-effort-none", action="store_true",
+                   help="bez --thinking wysyła też reasoning_effort=none (Ollama); vLLM tego nie potrzebuje")
     p.add_argument("--platform", default="dgx-spark", help="etykieta platformy w wynikach")
     p.add_argument("--out", default="bench/results")
     args = p.parse_args()
@@ -112,7 +117,7 @@ def main() -> None:
     for n in args.lengths:
         prompt = build_prompt(n, uuid.uuid4().hex[:12])
         for mode in ("cold", "warm"):
-            r = run_one(base, model, prompt, args.max_tokens, args.thinking)
+            r = run_one(base, model, prompt, args.max_tokens, args.thinking, args.reasoning_effort_none)
             r.update({"target_tokens": n, "mode": mode})
             rows.append(r)
             print(f"{r['prompt_tokens'] or n:>8} {mode:>5} {r['ttft_s']:>9.2f} {str(r['decode_tok_s']):>13} {r['total_s']:>11.2f}")
@@ -134,7 +139,7 @@ def main() -> None:
         "max_tokens": args.max_tokens,
         "results": rows,
     }
-    path = out_dir / f"{stamp}-{args.platform}-{label.replace('/', '_')}.json"
+    path = out_dir / f"{stamp}-{args.platform}-{label.replace('/', '_').replace(':', '-')}.json"  # „:” z tagów Ollamy
     path.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"\nZapisano {path}")
 

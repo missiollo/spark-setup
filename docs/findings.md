@@ -408,7 +408,35 @@ Wnioski:
 - **Prefill zależy od mocy obliczeniowej**: Spark 4× szybszy dla MoE i **11× szybszy dla dense**. RAG z promptem ~25k bez cache: Qwen3.8 na Macu 131 s (powyżej proponowanego kryterium 15 s), na Sparku 12 s; Qwen3.6 19,6 s wobec 5,1 s.
 - Prefix cache w `mlx_lm.server` działa (TTFT warm 0,03–0,17 s); przy pracy agentowej (OpenCode, ~7× więcej tokenów promptu niż odpowiedzi, 3.10) o czasie kroku decyduje odsetek trafień w cache — na Macu każdy nietrafiony fragment kosztuje 4–11× więcej niż na Sparku.
 - Symulator zakładał dla M3 Max 14 efektywnych TFLOPS; zmierzone ~8–10,5 (do wpisania, B12).
-- Warianty 8-bit (porównanie z FP8 zestawu C) i Ollama/GGUF niezmierzone — brak miejsca na dysku Maca.
+- Warianty 8-bit i Ollama — pomiary niżej (3.11.1).
+
+#### 3.11.1 M3 Max — Ollama 0.40.3 (2026-10-14)
+
+Sieć, w której pracował Mac, zrywa połączenia TLS z huggingface.co / hf.co / cdn-lfs (także poza piaskownicą Claude Code, bez proxy); PyPI, GitHub i rejestr Ollamy działają — modele pobrane przez `ollama pull` (~35 MB/s). Pomiar na drugiej instancji serwera (port 11500, ten sam magazyn modeli) z ustawieniami odpowiadającymi zestawowi C: `OLLAMA_CONTEXT_LENGTH=65536`, `OLLAMA_NUM_PARALLEL=4`, `OLLAMA_FLASH_ATTENTION=1`, KV cache domyślnie f16. `run_bench.py --reasoning-effort-none` — Ollama ignoruje `chat_template_kwargs` i `think: false` w API OpenAI; rozumowanie wyłącza tylko `reasoning_effort: "none"` (sprawdzone). gpt-oss mierzony bez tej opcji, jak na Sparku.
+
+| Tag Ollamy | Format (`ollama show`) | Silnik | Odpowiednik na Sparku |
+|---|---|---|---|
+| `qwen3.6:35b-a3b` = `qwen3.6:35b-mlx` (te same wagi) | NVFP4, 22 GiB | MLX (0.32.3) | Qwen3.6 NVFP4, zestaw B |
+| `qwen3.6:35b-a3b-mxfp8` | MXFP8, 38 GB | MLX | Qwen3.6 FP8, zestaw C |
+| `gpt-oss:120b` | MXFP4, 65 GB | `llama-server` (GGUF, Metal; `-c 262144 -np 4 -b 512 -ub 512`) | gpt-oss-120b, zestaw A |
+
+Uwaga: domyślny tag `qwen3.6:35b-a3b` na Macu to NVFP4 na MLX, nie GGUF — wersji GGUF Qwena (do llama.cpp i monitora tokenów, B17) trzeba szukać w tagach `…-q4_K_M`.
+
+| Model (M3 Max, Ollama) | TTFT cold [s] ~1,6k / ~6k / ~25k | TTFT warm [s] | Decode [tok/s] ~1,6k / ~6k / ~25k | Spark (3.4, 3.5, 3.9) |
+|---|---|---|---|---|
+| Qwen3.6 NVFP4 — przebieg 1 / 2 | 1,11 / 4,16 / 20,69 · 1,01 / 4,16 / 21,15 | 0,06–0,09 | 86–101 / 105–101 / 79–93 | NVFP4: TTFT 0,34 / 1,08 / 5,08; decode 79 / 78 / 71 |
+| Qwen3.6 MXFP8 | 1,37 / 4,44 / 22,02 | 0,07–0,13 | 104,6 / 94,4 / 81,2 | FP8: TTFT 0,55 / 1,64 / 6,89; decode 52 / 51 / 47 |
+| gpt-oss-120b | 2,44 / 8,16 / 46,16 | 0,09–0,23 | 57,0 / 50,1 / 45,9 | TTFT 0,46 / 1,40 / 5,94; decode 39 / 37 / 34 |
+
+Prefill przy ~25k: Qwen3.6 ~1 140–1 215 tok/s (Spark NVFP4 ~4 950), gpt-oss ~510 tok/s (~5 efektywnych TFLOPS; Spark ~4 000 tok/s).
+
+Wnioski:
+- **Ollama z silnikiem MLX generuje szybciej niż `mlx_lm.server`** na tym samym Macu: Qwen3.6 4-bit ~80–107 tok/s wobec 65–81 (3.11; inne formaty 4-bit — NVFP4 wobec affine — i inny serwer, więc różnicy nie da się przypisać jednemu czynnikowi).
+- **Decode Qwen3.6 na Macu nie zależy od precyzji**: MXFP8 (38 GB) generuje tyle co NVFP4 (22 GB) — przy 3 mld aktywnych parametrów ograniczeniem nie jest przepustowość pamięci, tylko narzut na token. Na Sparku FP8 jest o ~35% wolniejszy od NVFP4 (3.9).
+- **Decode: Mac 1,3–2× szybszy niż Spark** (Qwen3.6 ~100 wobec 79 tok/s; FP8/MXFP8 ~95 wobec 50; gpt-oss ~50 wobec 37). **Prefill: Spark 3–8× szybszy** (TTFT 25k: Qwen3.6 21 s wobec 5 s, gpt-oss 46 s wobec 6 s).
+- Rozrzut decode między dwoma przebiegami tego samego modelu (79–107 tok/s) przy odpowiedziach ~50 tokenów (~0,5 s) — pojedyncze liczby traktować orientacyjnie; trend jest stały.
+- gpt-oss przez Ollamę działa na `llama-server` z `-b 512 -ub 512` — małe paczki prefillu; większe `-ub` mogłyby skrócić TTFT (niesprawdzone, Ollama nie udostępnia tej opcji wprost).
+- Qwen3.8-27B przez Ollamę niezmierzony (nie pobrany).
 
 ## 4. Sposób pracy i odtwarzalność
 
