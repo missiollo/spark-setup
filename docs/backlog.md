@@ -2,20 +2,26 @@
 
 Jedno miejsce na to, co zostało do zrobienia. Szczegóły i uzasadnienia: [`findings.md`](findings.md), decyzje: [`decisions.md`](decisions.md), czas pracy: [`czas-pracy.md`](czas-pracy.md).
 
-## Stan na 2026-10-11 (gdzie skończyliśmy)
+## Stan na 2026-10-14 (gdzie skończyliśmy)
 
-- Spark: konto `michal`, klucz SSH, `/data/hf`, wszystkie modele pobrane, obraz vLLM `nvcr.io/nvidia/vllm:26.09-py3`.
-- Działa zestaw B: :8000 Qwen3.6, :8002 Qwen3.8, :8004 Gemma 4, :8001 bge-m3, Open WebUI :8080 (Gemma dodana w panelu ręcznie).
-- Zmierzone (`make bench`): Qwen3.6, Qwen3.8, Gemma 4 (zestaw B), gpt-oss-120b (zestaw A); wyniki JSON w `bench/results/` zacommitowane, liczby w `findings.md` 3.4–3.6.
-- Dostęp z Maca wyłącznie przez tunel `ssh -N spark` (porty 8000–8004, 8080).
+- Spark: zestaw C (Qwen3.6 FP8 :8000 + bge-m3, Open WebUI) uruchomiony 2026-10-13 i zmierzony (`findings.md` 3.9); OpenCode 1.19 działa z zestawem C (3.10); ostatni `git pull` na Sparku 2026-10-14 ~00:45 — **commity z 2026-10-14 jeszcze niepobrane**. Restart Sparka 2026-10-13 ~15:50 z nieznanej przyczyny (dziennik bez zamknięcia; obserwacja do B14 niezapisana).
+- Narzędzia: monitor tokenów `clients/token-monitor.html` (vLLM i llama.cpp, CSV), `scripts/vllm-top.sh` / `make top` (6.3.1).
+- M3 Max 128 GB (Mac, bez Sparka): pomiary MLX i Ollama (3.11, 3.11.1). Wniosek: decode Mac 1,3–3× szybszy (Ollama MLX, MTP dla Qwen3.8), prefill Spark 3–11× szybszy. W Ollamie: `qwen3.6:35b-a3b` (NVFP4), `qwen3.6:35b-a3b-q4_K_M` (GGUF), `qwen3.8:27b-nvfp4`, `gemma4:26b-nvfp4`, `gpt-oss:120b`; wolne 101 GB. Sieć Maca blokuje Hugging Face — modele przez Ollamę.
+- Rekomendacja robocza do programowania agentowego: Qwen3.6-35B-A3B (Mac: Ollama NVFP4; Spark: NVFP4) — jakość niezmierzona (B18).
+- Otwarte z 2026-10-13: wynik testów Playwright w `openMinesweeper` (sesja OpenCode z subagentami, 3.10) — niesprawdzony.
 
-## Plan na 2026-10-12
+## Priorytety na kolejne sesje
 
-| Kolejność | Zadanie | Odnośniki |
-|---|---|---|
-| 1 | Praca z OpenCode na **zestawie C** (`make up SET=c`: Qwen3.6-35B-A3B FP8 na :8000 + bge-m3): sprawdzenie całego łańcucha (tunel, konfiguracja klienta, tool calling) i pomiar zestawu C — **zrobione 2026-10-13**: pomiar (`findings.md` 3.9), OpenCode 1.19.0 działa (3.10) | `findings.md` 6.3, 5.2; `clients/opencode.json.example`; ustawienia `model` / `small_model` dla zestawu C: `findings.md` 6.3 |
-| 2 | Scenariusze SOFA na modelach zestawu B: ocena jakości wymagań, text-to-SQL, RAG nad modelem EA, pytania z obszaru geopolityki | krok 11; `findings.md` 3.6; `docs/context/sofa-obserwacje.md` |
-| 3 | Dyskusja: jak zmienić konfigurację pod pracę wieloużytkownikową — profil `set-analysts`, `max_num_seqs`, przydziały pamięci, limity kontekstu, test współbieżności | krok 13, B11; `findings.md` 6.5 |
+| Kolejność | Zadanie | Gdzie | Odnośniki |
+|---|---|---|---|
+| 1 | `git pull` na Sparku; stan zestawu C; wynik Playwright w `openMinesweeper`; zapis restartu z 2026-10-13 do B14 | Spark, Mac | 3.10, B14 |
+| 2 | **Ocena jakości kodu z agenta** (szkielet `bench/agent-eval/`: zadania, ukryte testy, skrypt `opencode run`, CSV) — Qwen3.6 ogólny / do kodu na Macu | Mac | **B18** |
+| 3 | **MTP na Sparku** (`--speculative-config`) dla Qwen3.6 / Qwen3.8 — na Macu MTP podwoił decode Qwen3.8 | Spark | **B15** |
+| 4 | Zestaw D: Qwen3-Coder-Next — pomiar i ten sam test jakości co w B18 | Spark | krok 9, B18 |
+| 5 | Scenariusze SOFA na zestawie B: jakość wymagań, text-to-SQL, RAG nad EA, geopolityka | Spark | krok 11, 3.6 |
+| 6 | Praca wieloużytkownikowa: test współbieżności, profil `set-analysts` | Spark | krok 13, B11, B16 |
+| 7 | Porównanie pracy agentowej Spark ↔ Mac z monitorem tokenów (`llama-server --metrics` na GGUF z Ollamy) | oba | B17, B19 |
+| 8 | Drobne: Gemma 4 na Macu z dłuższą odpowiedzią (pomiar niewiarygodny, 3.11.1); efektywne TFLOPS M3 Max do symulatora (~5–10,5 zamiast 14); trwały cache kompilacji vLLM | oba | 3.11.1, B12, B2 |
 
 ## Najbliższe drobne kroki
 
@@ -68,5 +74,5 @@ Zmiany zidentyfikowane, celowo jeszcze niewprowadzone. Numeracja B* jest stała 
 | B15 | vLLM | Test dekodowania spekulacyjnego (MTP, `--speculative-config`) na Qwen3.6: czy model ma głowice MTP, zysk tok/s przy generowaniu kodu | jeden strumień jest ograniczony przepustowością pamięci (`findings.md` 3.9, 3.10: ~48 tok/s FP8); spekulacja może podnieść decode bez zmiany modelu — nieprzetestowane, wymaga restartu zestawu | średni → **wysoki**: na M3 Max Ollama używa MTP dla Qwen3.8 automatycznie — 39–51 tok/s wobec 21 bez MTP (`findings.md` 3.11.1); Spark 12,6 tok/s |
 | B16 | OpenCode | Równoległe agenty: kilka `opencode run "…"` w osobnych `git worktree`, pomiar łącznego tok/s i czasu zadania | 2 równoczesne zapytania dały ~77 tok/s łącznie wobec ~48 dla jednego (`findings.md` 3.10); limit `--max-num-seqs 16`, cache na ~21 zapytań po 64k (3.9); powiązane z B11 | niski |
 | B17 | porównanie | To samo zadanie w OpenCode na Sparku (zestaw C) i na Macu (llama.cpp, Qwen3.6 GGUF UD-Q4_K_M), zapis sesji z monitora tokenów do `bench/sessions/` | procedura i kolumny: `findings.md` 6.3.1; odpowiada na pytanie, ile daje Spark wobec laptopa w pracy agentowej, a nie tylko w `make bench` | średni |
-| B18 | porównanie | Jakość modeli w pracy agentowej: to samo zadanie (np. testy Minesweepera, nowa sesja OpenCode) na Qwen3.6-35B-A3B z parametrami ogólnymi i do kodu (`temperature` 0,6, `presence_penalty` 0 — tag Ollamy `qwen3.6:35b-a3b-coding-nvfp4`) oraz Qwen3-Coder-Next (Ollama 52 GB; Spark zestaw D); miary: czas, liczba kroków, ucięte odpowiedzi, czy testy przechodzą | dotąd mierzona tylko szybkość; wybór modelu do programowania agentowego (rekomendacja robocza: Qwen3.6) wymaga oceny jakości; uzupełnia krok 9 i B17 | średni |
+| B18 | porównanie | Jakość kodu z agenta. Metoda: 3–5 zadań na `openMinesweeper` z obiektywnym sprawdzeniem (nowa funkcja, celowo wprowadzony błąd, napisanie testów, refaktor); **ukryte testy akceptacyjne** pisane wcześniej i dodawane po przebiegu (agent nie może „naprawić” testów); każdy przebieg w osobnym `git worktree` z tego samego commita, nowa sesja, to samo polecenie, limit czasu, 2–3 powtórzenia; skrypt: `opencode run --dir <worktree> --model <m> "<zadanie>"` → testy, linter, `git diff --stat` → wiersz CSV w `bench/agent-eval/`. Miary: % ukrytych testów, błędy lintera, pliki poza zakresem, wyłączone testy, czas, kroki, tokeny i ucięte odpowiedzi (monitor tokenów), interwencje, ocena przeglądu 1–5. Modele: Qwen3.6-35B-A3B z parametrami ogólnymi i do kodu (`temperature` 0,6, `presence_penalty` 0 — tag Ollamy `qwen3.6:35b-a3b-coding-nvfp4`), Qwen3-Coder-Next (Ollama 52 GB; Spark zestaw D). Punkt odniesienia: publiczne SWE-bench Verified / Aider Polyglot / Terminal-Bench (pełna precyzja) | dotąd mierzona tylko szybkość; wybór modelu do programowania agentowego (rekomendacja robocza: Qwen3.6) wymaga oceny jakości; uzupełnia krok 9 i B17 | **wysoki** (następna sesja) |
 | B19 | OpenCode / Claude Code na Macu | Dostawca Ollamy w `clients/opencode.json.example` (`http://localhost:11434/v1`, Qwen3.6, limity kontekstu); w aplikacji Ollama kontekst ≥ 64k (domyślny ucina prompt agenta); Claude Code: `ollama launch claude --model qwen3.6:35b-a3b` (Ollama 0.40 obsługuje API Anthropic `/v1/messages`) | praca agentowa na Macu bez Sparka; Qwen3.8 na Macu tylko przy krótkim kontekście (prefill ~190 tok/s, 3.11) | średni |
