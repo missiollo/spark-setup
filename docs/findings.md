@@ -436,7 +436,7 @@ Wnioski:
 - **Decode: Mac 1,3–2× szybszy niż Spark** (Qwen3.6 ~100 wobec 79 tok/s; FP8/MXFP8 ~95 wobec 50; gpt-oss ~50 wobec 37). **Prefill: Spark 3–8× szybszy** (TTFT 25k: Qwen3.6 21 s wobec 5 s, gpt-oss 46 s wobec 6 s).
 - Rozrzut decode między dwoma przebiegami tego samego modelu (79–107 tok/s) przy odpowiedziach ~50 tokenów (~0,5 s) — pojedyncze liczby traktować orientacyjnie; trend jest stały.
 - gpt-oss przez Ollamę działa na `llama-server` z `-b 512 -ub 512` — małe paczki prefillu; większe `-ub` mogłyby skrócić TTFT (niesprawdzone, Ollama nie udostępnia tej opcji wprost).
-- Qwen3.8-27B przez Ollamę niezmierzony (nie pobrany).
+- **Ollama używa dekodowania spekulacyjnego (MTP) automatycznie** dla Qwen3.8 (`qwen3.8:27b-nvfp4`, MLX): w logu serwera `speculative decode stats`, akceptacja 68–83%, ~2 tokeny na krok. Wynik: decode **39,4 / 44,5 / 41,1 tok/s** cold (~1,6k / 6k / 25k), warm 37,5–51,3 — 2× więcej niż bez MTP w `mlx_lm.server` (18–21, 3.11) i ponad sufit przepustowości bez spekulacji (~22 tok/s), 3× więcej niż Spark (12,4–12,6, bez MTP). TTFT bez zmian: 7,40 / 31,14 / 132,45 s (Spark 1,44 / 2,60 / 11,99). Wynik `bench/results/20261014-1530-…-qwen3.8-27b-nvfp4.json`. Nieporównywalne 1:1 ze Sparkiem; uzasadnia test MTP na Sparku (B15). Dla Qwen3.6 w Ollamie wpisów o spekulacji w logu nie było.
 
 ## 4. Sposób pracy i odtwarzalność
 
