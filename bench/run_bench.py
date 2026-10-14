@@ -120,18 +120,21 @@ def main() -> None:
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M")
+    # mlx_lm.server podaje jako id pełną ścieżkę do katalogu modelu — w wynikach tylko jego nazwa
+    label = Path(model).name.lower() if model.startswith("/") else model
     result = {
         "timestamp": datetime.now().isoformat(timespec="seconds"),
         "platform": args.platform,
         "client_host": socket.gethostname(),
         "client_os": platform.platform(),
         "endpoint": base,
-        "model": model,
+        "model": label,
+        **({"model_path": model} if label != model else {}),
         "thinking": args.thinking,
         "max_tokens": args.max_tokens,
         "results": rows,
     }
-    path = out_dir / f"{stamp}-{args.platform}-{model.replace('/', '_')}.json"
+    path = out_dir / f"{stamp}-{args.platform}-{label.replace('/', '_')}.json"
     path.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"\nZapisano {path}")
 

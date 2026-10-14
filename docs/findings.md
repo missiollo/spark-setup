@@ -376,6 +376,40 @@ Wnioski:
 - Dwa równoczesne zapytania dają łącznie ~1,6× więcej tokenów/s niż jedno (77 wobec 48) — zapas na drugiego użytkownika; test współbieżności: B11.
 - Prompt OpenCode jest duży (instrukcje systemowe + definicje narzędzi; w jednym 10-sekundowym oknie ~26 tys. tokenów prefillu — szacunek z `Avg prompt throughput`), więc TTFT kolejnych kroków zależy głównie od prefix cache; kontekst 64k (`LLM_MAX_LEN`) wystarcza, 32k w zestawach B i D może być ciasne przy dłuższych sesjach (niezmierzone).
 
+### 3.11 Pomiary M3 Max 128 GB — MLX (2026-10-14)
+
+Sprzęt: MacBook Pro M3 Max (16 rdzeni CPU, 128 GB, ~400 GB/s), macOS 27.0.1. Serwer: `mlx_lm.server` z mlx-lm 0.32.0 uruchamiany przez `uvx` (bez instalacji), wagi MLX 4-bit z katalogu LM Studio (`~/.cache/lm-studio/models/lmstudio-community/…`) — bez pobierania (na dysku wolne 12 GB). Ustawienia: `--decode-concurrency 16 --prompt-cache-size 8 --max-tokens 16384`. Pomiar: `bench/run_bench.py --platform m3-max-128gb-mlx` (ten sam prompt i tryb co 3.4), wyniki `bench/results/20261014-1224-…-qwen3.6-35b-a3b-mlx-4bit.json`, `20261014-1227-…-qwen3.8-27b-mlx-4bit.json`. Jeden przebieg na model.
+
+Qwen3.6-35B-A3B (MoE) — MLX 4-bit (M3 Max) wobec NVFP4 (Spark, 3.4):
+
+| Prompt [tok] | TTFT cold [s] Mac / Spark | TTFT warm [s] Mac / Spark | Decode [tok/s] Mac / Spark |
+|---|---|---|---|
+| ~1 590 | 1,13 / 0,34 | 0,03 / 0,26 | 81,4 / 79,2 |
+| ~6 240 | 4,05 / 1,08 | 0,04 / 0,34 | 77,0 / 77,5 |
+| ~25 140 | **19,59 / 5,08** | 0,07 / 0,55 | 65,4 / 71,3 |
+
+Qwen3.8-27B (dense) — MLX 4-bit (M3 Max) wobec NVFP4 (Spark):
+
+| Prompt [tok] | TTFT cold [s] Mac / Spark | TTFT warm [s] Mac / Spark | Decode [tok/s] Mac / Spark |
+|---|---|---|---|
+| ~1 590 | 7,22 / 1,44 | 0,16 / 0,17 | **21,0 / 12,6** |
+| ~6 240 | 32,13 / 2,60 | 0,12 / 0,74 | 20,4 / 12,8 |
+| ~25 140 | **131,0 / 11,99** | 0,17 / 0,22 | 18,0 / 12,4 |
+
+| Miara (M3 Max, MLX) | Qwen3.6 MoE | Qwen3.8 dense |
+|---|---|---|
+| Prefill [tok/s] (6–25k) | ~1 280–1 540 (Spark ~4 900–5 800) | ~190 (Spark ~2 100–2 400) |
+| Efektywne TFLOPS prefillu | ~8–9 (Spark ~30–35) | ~10,5 (Spark ~113–130) |
+| Decode / sufit przepustowości (400 GB/s ÷ wagi 16,1 GB) | — | ~85% |
+| Szczyt pamięci | 19,7 GB (krótki test `mlx_lm.generate`) | niezmierzony |
+
+Wnioski:
+- **Decode zależy od przepustowości pamięci**: MoE generuje na Macu tak samo jak na Sparku (~65–81 tok/s), dense Qwen3.8 na Macu **1,5–1,7× szybciej** (400 wobec 273 GB/s).
+- **Prefill zależy od mocy obliczeniowej**: Spark 4× szybszy dla MoE i **11× szybszy dla dense**. RAG z promptem ~25k bez cache: Qwen3.8 na Macu 131 s (powyżej proponowanego kryterium 15 s), na Sparku 12 s; Qwen3.6 19,6 s wobec 5,1 s.
+- Prefix cache w `mlx_lm.server` działa (TTFT warm 0,03–0,17 s); przy pracy agentowej (OpenCode, ~7× więcej tokenów promptu niż odpowiedzi, 3.10) o czasie kroku decyduje odsetek trafień w cache — na Macu każdy nietrafiony fragment kosztuje 4–11× więcej niż na Sparku.
+- Symulator zakładał dla M3 Max 14 efektywnych TFLOPS; zmierzone ~8–10,5 (do wpisania, B12).
+- Warianty 8-bit (porównanie z FP8 zestawu C) i Ollama/GGUF niezmierzone — brak miejsca na dysku Maca.
+
 ## 4. Sposób pracy i odtwarzalność
 
 ### 4.1 Dostęp: SSH z tunelami
