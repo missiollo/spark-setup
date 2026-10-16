@@ -91,6 +91,7 @@ vLLM kończy start błędem `max_num_seqs (256) exceeds available Mamba cache bl
 | `make down`, `make logs` | zatrzymanie, logi wszystkich usług |
 | `make test` | lista modeli i krótka odpowiedź |
 | `make bench` | pomiar, wynik do `bench/results/` (commituj) |
+| `scripts/spark-health.sh` | z Maca: sieć, SSH, kontenery, tunel i usługi na portach 8000–8004, 8080, z podpowiedzią naprawy |
 | `make top P=8000` | podgląd na żywo: tok/s, kolejka, KV cache, ucięte odpowiedzi (`scripts/vllm-top.sh`; z Maca przez tunel) |
 | `make harden-ssh` | tylko klucze, bez roota, tylko twój użytkownik (gdy klucz na pewno działa) |
 

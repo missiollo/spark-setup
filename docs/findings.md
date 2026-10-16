@@ -367,10 +367,12 @@ Sesja agentowa z subagentami (2026-10-14 ~00:00–00:45; zadanie: refaktor gry d
 | Długa odpowiedź | jedno zapytanie generowało bez przerwy od 00:31:10 do ok. 00:37 (~15 tys. tokenów), ucięte na `limit.output` 16 384 | log vLLM, licznik `finished_reason="length"` |
 | Ucięte odpowiedzi | 6 od startu kontenera (stan 00:45); z tego do 3 to testowe zapytania monitora (`max_tokens` 450), więc OpenCode — co najmniej 2 | `/metrics` |
 | Wynik testów Playwright | do sprawdzenia 2026-10-14 | — |
+| Przerwanie sesji | ostatnie zapytanie dotarło 2026-10-14 01:18; potem OpenCode: „Cannot connect to API” (agent debugował testy e2e). Spark i kontenery działały bez przerwy (bez błędów w logu przez 72 h) — zerwał się tunel SSH na Macu (uśpienie / zmiana sieci; `ServerAliveInterval 30` kończy połączenie po ~90 s braku odpowiedzi) | log vLLM, `scripts/spark-health.sh` 2026-10-16 |
 
 Wnioski:
 - Qwen3.6 w OpenCode nie wywołuje subagentów równolegle (jedno wywołanie `task` na odpowiedź) — realną równoległość daje tylko kilka sesji OpenCode (B16).
 - Bardzo długie pojedyncze odpowiedzi (rozumowanie albo cały plik w jednym wywołaniu narzędzia) kończą się ucięciem na `limit.output` i ponowieniem kroku — warto kazać pisać mniejsze pliki; ucięcia widać w monitorze tokenów i `vllm-top.sh` (6.3.1).
+- Długie sesje agenta z Maca wymagają działającego tunelu: po uśpieniu Maca albo zmianie sieci `ssh -N spark` trzeba uruchomić ponownie; na noc: `caffeinate -i` (Mac na zasilaczu) albo pętla wznawiająca tunel (`autossh`); stan sprawdza `scripts/spark-health.sh`.
 - Zestaw C wystarcza do pracy z OpenCode; Coder-Next (zestaw D) nie jest do tego konieczny — porównanie jakości kodu Qwen3.6 i Coder-Next wciąż do zrobienia (krok 9).
 - Praca agentowa to głównie prefill: ~7× więcej tokenów promptu niż odpowiedzi, a prefix cache trafia w 36–67% — liczy się TTFT i prefix cache bardziej niż decode.
 - Dwa równoczesne zapytania dają łącznie ~1,6× więcej tokenów/s niż jedno (77 wobec 48) — zapas na drugiego użytkownika; test współbieżności: B11.
