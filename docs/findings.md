@@ -764,6 +764,50 @@ Kryterium akceptacji (propozycja do uzgodnienia): przy przewidywanej liczbie ró
 
 Przeniesiony do [`backlog.md`](backlog.md).
 
+### 6.7 Testy generowane przez agenta (2026-10-16)
+
+Przypadek: `openMinesweeper`, sesja OpenCode z Qwen3.6 FP8 (3.10). Agent przeanalizował 5 padających testów (Jest) i uznał, że **wszystkie błędy są w testach, nie w logice gry**:
+
+| # | Błąd w teście (wg agenta) | Kategoria |
+|---|---|---|
+| 1 | opis planszy ma 19 znaków zamiast 25 → złe sąsiedztwo, inny wynik | ręcznie wpisane dane testowe |
+| 2 | asercja sprawdza inne pole niż komentarz | asercja ≠ intencja |
+| 3 | `JSON.stringify` „nie gwarantuje kolejności właściwości” | **diagnoza wątpliwa** — kolejność w JS jest ustalona (klucze liczbowe rosnąco, potem kolejność dodania); `toEqual` lepsze, ale z innego powodu |
+| 4 | nazwa „returns false”, asercja `toBe(true)` | nazwa ≠ asercja |
+| 5 | pole ma 3 miny w sąsiedztwie, nie 2 | wartość oczekiwana policzona „w pamięci” |
+
+Wniosek: analiza agenta to hipotezy — każdą trzeba potwierdzić uruchomieniem kodu (faktyczna wartość) przed zmianą testu; agent zapowiedział 4 edycje przy 5 problemach.
+
+Zalecenia:
+
+| Problem | Ochrona |
+|---|---|
+| Złe dane testowe | plansze tylko przez funkcję pomocniczą z kontrolą wymiarów, np. `board(['X....', '.X...', …])` rzuca wyjątek przy złej długości wiersza |
+| Wartości oczekiwane liczone w pamięci | liczyć je w teście prostą, niezależną funkcją (np. liczenie min w 8 sąsiednich polach) albo opisać, skąd pochodzą |
+| Asercja niezgodna z nazwą | jeden test = jedno zachowanie; nazwa opisuje asercję; przegląd przed akceptacją |
+| Niedeterminizm | generator losowy wstrzykiwany z ziarnem albo plansza podana wprost; w Playwright tryb testowy ustawiający miny, `data-testid`, automatyczne czekanie zamiast `sleep` |
+| Agent „naprawia” test pod błędny kod | zmiana testu tylko z dowodem (faktyczna wartość, fragment kodu); najmocniej: testy akceptacyjne pisane osobno i ukryte przed agentem (B18) |
+
+Kontrola samych testów:
+- **najpierw na czerwono** — nowy test uruchomić na celowo zepsutej logice; musi nie przejść;
+- **testowanie mutacyjne** (Stryker dla JS) — ile wprowadzonych błędów testy wykrywają;
+- **testy właściwości** (fast-check) — niezmienniki zamiast ręcznych przykładów: liczba min stała, pierwsze kliknięcie nie trafia w minę, odkrycie pustego pola odkrywa cały połączony obszar, liczba na polu = liczba min wokół;
+- **linter testów** (`eslint-plugin-jest`): `expect-expect`, `no-disabled-tests`, `no-conditional-expect`, `valid-title`.
+
+Zasady do `AGENTS.md` repozytorium, w którym agent pisze testy (do skopiowania):
+
+```markdown
+## Testy
+- Nie zmieniaj testu, który nie przechodzi, bez dowodu, że błąd jest w teście (faktyczna wartość z uruchomienia, fragment kodu).
+- Dane testowe (plansze, obiekty) twórz tylko przez funkcje pomocnicze z kontrolą poprawności.
+- Nie wpisuj ręcznie oczekiwanych liczb; licz je w teście albo opisz w komentarzu, skąd pochodzą.
+- Jeden test sprawdza jedno zachowanie; nazwa testu opisuje asercję.
+- Nowy test najpierw uruchom tak, żeby nie przeszedł (zepsuta logika), potem napraw.
+- Po zmianach uruchom pełny zestaw testów i pokaż wynik.
+- Nie wyłączaj, nie pomijaj i nie usuwaj testów; nie zostawiaj plików .bak.
+- Losowość i czas tylko wstrzykiwane (ziarno, stała plansza).
+```
+
 ## 7. Obraz odzyskiwania
 
 | Parametr | Wartość |
