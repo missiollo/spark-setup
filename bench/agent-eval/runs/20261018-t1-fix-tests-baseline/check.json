@@ -1,0 +1,135 @@
+{
+  "task": "t1-fix-tests",
+  "repo": "/Users/michalmariak/Documents/Projects/openMinesweeper",
+  "base": "HEAD",
+  "repeat": 3,
+  "suites": {
+    "jest": {
+      "runs": [
+        {
+          "total": 38,
+          "passed": 33,
+          "failed": 5,
+          "skipped": 0
+        },
+        {
+          "total": 38,
+          "passed": 33,
+          "failed": 5,
+          "skipped": 0
+        },
+        {
+          "total": 38,
+          "passed": 33,
+          "failed": 5,
+          "skipped": 0
+        }
+      ],
+      "all_passed_runs": 0,
+      "always_failing": [
+        "Chord Click chord does nothing on unrevealed cell",
+        "Edge Cases chord can trigger gameOver via internal reveal",
+        "Flood Fill (BFS) flood fill stops at numbered cells",
+        "Flood Fill (BFS) reveal on empty cell triggers flood fill",
+        "Win Detection checkWin returns false after game over even if all revealed"
+      ],
+      "flaky": [],
+      "baseline_total": 38,
+      "tests_removed": 0
+    },
+    "playwright": {
+      "runs": [
+        {
+          "total": 39,
+          "passed": 29,
+          "failed": 10,
+          "skipped": 0
+        },
+        {
+          "total": 39,
+          "passed": 30,
+          "failed": 9,
+          "skipped": 0
+        },
+        {
+          "total": 39,
+          "passed": 30,
+          "failed": 9,
+          "skipped": 0
+        }
+      ],
+      "all_passed_runs": 0,
+      "always_failing": [
+        "game-flow.spec.js › New Game button resets the board",
+        "game-flow.spec.js › flagged cell displays flag emoji and correct class",
+        "game-flow.spec.js › game over overlay appears on loss",
+        "game-flow.spec.js › removing flag returns cell to hidden state",
+        "game-mechanics.spec.js › timer stops on game over (lose)",
+        "game-mechanics.spec.js › timer stops on game over (win)",
+        "game-mechanics.spec.js › winning reveals all non-mine cells and shows win overlay",
+        "performance.spec.js › game over on 50x50 board shows overlay quickly"
+      ],
+      "flaky": [
+        "game-mechanics.spec.js › flagged cells cannot be left-click revealed",
+        "game-mechanics.spec.js › right-click twice cycles flag off",
+        "game-mechanics.spec.js › wrong flag shows red X after game over"
+      ],
+      "baseline_total": 39,
+      "tests_removed": 0
+    }
+  },
+  "changed_files": {
+    "minesweeper.html": {
+      "added": "72",
+      "deleted": "160"
+    },
+    "__tests__/game-logic.test.js": {
+      "added": "new",
+      "deleted": "0"
+    },
+    "e2e/game-flow.spec.js": {
+      "added": "new",
+      "deleted": "0"
+    },
+    "e2e/game-mechanics.spec.js": {
+      "added": "new",
+      "deleted": "0"
+    },
+    "e2e/game-mechanics.spec.js.bak": {
+      "added": "new",
+      "deleted": "0"
+    },
+    "e2e/performance.spec.js": {
+      "added": "new",
+      "deleted": "0"
+    },
+    "jest.config.cjs": {
+      "added": "new",
+      "deleted": "0"
+    },
+    "minesweeper.logic.js": {
+      "added": "new",
+      "deleted": "0"
+    },
+    "package-lock.json": {
+      "added": "new",
+      "deleted": "0"
+    },
+    "package.json": {
+      "added": "new",
+      "deleted": "0"
+    },
+    "playwright.config.js": {
+      "added": "new",
+      "deleted": "0"
+    }
+  },
+  "logic_changed": [
+    "minesweeper.html",
+    "minesweeper.logic.js"
+  ],
+  "skip_or_only": [],
+  "leftover_files": [
+    "e2e/game-mechanics.spec.js.bak"
+  ]
+}

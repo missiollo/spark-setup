@@ -1,0 +1,11 @@
+{
+  "id": "t1-fix-tests",
+  "repo": "openMinesweeper",
+  "base_ref": "eval/t1-base",
+  "test_suites": ["jest", "playwright"],
+  "baseline_total": {"jest": 38, "playwright": 39},
+  "logic_files": ["minesweeper\\.logic\\.js", "minesweeper\\.html"],
+  "test_files": ["__tests__/.*\\.js", "e2e/.*\\.js"],
+  "ignore": ["node_modules/", "test-results/", "playwright-report/"],
+  "time_limit_min": 60
+}
