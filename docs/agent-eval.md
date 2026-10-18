@@ -99,7 +99,7 @@ Do ustalenia z analitykami: źródło danych (anonimizacja), liczba pytań na sc
 
 | Id | Repo | Opis | Stan |
 |---|---|---|---|
-| T1 | `openMinesweeper` | naprawa padających i niestabilnych testów (Jest 5, Playwright 8 + 3 niestabilne); rozstrzygnięcie „błąd w teście czy w grze” | gotowe: stan bazowy `eval/t1-base` (`92d800e`), klucz kompletny (18 pozycji: 2 błędy gry, 16 błędów testów), skrypt diagnostyczny w `diag/`; do zrobienia: pierwsza seria |
+| T1 | `openMinesweeper` | naprawa padających i niestabilnych testów (Jest 5, Playwright 8 + 3 niestabilne); rozstrzygnięcie „błąd w teście czy w grze” | gotowe: stan bazowy `eval/t1-base` (`fe7f81a`, z wymaganiem w `PROJECT.md`: testy bez losowości), klucz kompletny (18 pozycji: 2 błędy gry, 16 błędów testów), skrypt diagnostyczny w `diag/`; do zrobienia: pierwsza seria |
 | T2–T5 | `openMinesweeper` | nowa funkcja, wprowadzony błąd, napisanie testów, refaktor — z ukrytymi testami akceptacyjnymi (B18) | do przygotowania |
 
 Kolejność modeli w T1: Qwen3.6-35B-A3B FP8 (Spark, zestaw C — działa), Qwen3.6 NVFP4 (Mac, Ollama), Qwen3-Coder-Next (zestaw D / Ollama 52 GB), gpt-oss-120b (zestaw A).

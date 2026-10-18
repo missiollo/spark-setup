@@ -2,7 +2,7 @@
 
 **Ukryty przed agentem**: nie kopiować do worktree, nie wklejać do promptu. Służy wyłącznie do przeglądu (`review.md`).
 
-Stan bazowy: `openMinesweeper` tag `eval/t1-base` (`92d800e`, 2026-10-18). Przebieg zerowy (`check.py --repeat 3`): Jest 33/38 (5 zawsze pada), Playwright 30/39 (8 zawsze pada, 3 niestabilne).
+Stan bazowy: `openMinesweeper` tag `eval/t1-base` (`fe7f81a`, 2026-10-18; `PROJECT.md` z sekcją „Tests”: testy nie mogą opierać się na losowości). Przebieg zerowy (`check.py --repeat 3`): Jest 33/38 (5 zawsze pada), Playwright 30/39 (8 zawsze pada, 3 niestabilne).
 
 Diagnoza 2026-10-18 (Claude Code, w osobnym worktree, bez zmian w repo): uruchomienie testów, odczyt kodu, skrypt diagnostyczny Playwright (stan `game` vs DOM, częstości zdarzeń losowych, 10–30 prób na przypadek). Wszystkie pozycje **potwierdzone** uruchomieniem. Skrypt diagnostyczny (D1–D5): `diag/diag.spec.js`; ponowne uruchomienie — w worktree z `eval/t1-base` skopiować katalog `diag/` jako `zz-diag/` i `npx playwright test --config=zz-diag/pw.config.js --reporter=line`.
 
