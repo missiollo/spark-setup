@@ -2,19 +2,20 @@
 
 Jedno miejsce na to, co zostało do zrobienia. Szczegóły i uzasadnienia: [`findings.md`](findings.md), decyzje: [`decisions.md`](decisions.md), czas pracy: [`czas-pracy.md`](czas-pracy.md).
 
-## Stan na 2026-10-14 (gdzie skończyliśmy)
+## Stan na 2026-10-18 (gdzie skończyliśmy)
 
-- Spark: zestaw C (Qwen3.6 FP8 :8000 + bge-m3, Open WebUI) uruchomiony 2026-10-13 i zmierzony (`findings.md` 3.9); OpenCode 1.19 działa z zestawem C (3.10); ostatni `git pull` na Sparku 2026-10-14 ~00:45 — **commity z 2026-10-14 jeszcze niepobrane**. Restart Sparka 2026-10-13 ~15:50 z nieznanej przyczyny (dziennik bez zamknięcia; obserwacja do B14 niezapisana).
+- Spark: zestaw C (Qwen3.6 FP8 :8000 + bge-m3, Open WebUI) uruchomiony 2026-10-13 i zmierzony (`findings.md` 3.9); OpenCode 1.19 działa z zestawem C (3.10). Stan 2026-10-18: zestaw C działa bez przerwy od 2026-10-13 23:06 (`healthy`, 0 restartów, `make errors` bez błędów), 40 GiB dostępne; repo na Sparku = `origin/main` (`git pull` 2026-10-16 15:57). Restart Sparka 2026-10-13 15:50 bez zapisu zamknięcia (`last -x`: poprzednie poprawne wyłączenie 2026-10-11 17:18) — przyczyna nieznana; kontenery po nim nie wstały same, uruchomione ręcznie `make up` o 23:06 (B14).
 - Narzędzia: monitor tokenów `clients/token-monitor.html` (vLLM i llama.cpp, CSV), `scripts/vllm-top.sh` / `make top` (6.3.1).
 - M3 Max 128 GB (Mac, bez Sparka): pomiary MLX i Ollama (3.11, 3.11.1). Wniosek: decode Mac 1,3–3× szybszy (Ollama MLX, MTP dla Qwen3.8), prefill Spark 3–11× szybszy. W Ollamie: `qwen3.6:35b-a3b` (NVFP4), `qwen3.6:35b-a3b-q4_K_M` (GGUF), `qwen3.8:27b-nvfp4`, `gemma4:26b-nvfp4`, `gpt-oss:120b`; wolne 101 GB. Sieć Maca blokuje Hugging Face — modele przez Ollamę.
 - Rekomendacja robocza do programowania agentowego: Qwen3.6-35B-A3B (Mac: Ollama NVFP4; Spark: NVFP4) — jakość niezmierzona (B18).
-- Otwarte z 2026-10-13: wynik testów Playwright w `openMinesweeper` (sesja OpenCode z subagentami, 3.10) — niesprawdzony.
+- `openMinesweeper` (2026-10-18, `npx playwright test`, `npx jest`): Playwright 10 z 39 testów pada, Jest 5 z 38 — część to na pewno błędy testów, przekroczone czasy niezdiagnozowane (3.10, 6.7); poprawki w B20.
+- Dostęp z Maca: po restarcie Maca klucz SSH nie jest w agencie — `ssh-add --apple-load-keychain` (hasło w pęku kluczy).
 
 ## Priorytety na kolejne sesje
 
 | Kolejność | Zadanie | Gdzie | Odnośniki |
 |---|---|---|---|
-| 1 | `git pull` na Sparku; stan zestawu C; wynik Playwright w `openMinesweeper`; zapis restartu z 2026-10-13 do B14 | Spark, Mac | 3.10, B14 |
+| 1 | B20: poprawić testy `openMinesweeper` (dopasowanie klas, losowe miny, niestabilne testy) — punkt wyjścia do B18 | Mac | 3.10, 6.7, B20 |
 | 2 | **Ocena jakości kodu z agenta** (szkielet `bench/agent-eval/`: zadania, ukryte testy, skrypt `opencode run`, CSV) — Qwen3.6 ogólny / do kodu na Macu | Mac | **B18** |
 | 3 | **MTP na Sparku** (`--speculative-config`) dla Qwen3.6 / Qwen3.8 — na Macu MTP podwoił decode Qwen3.8 | Spark | **B15** |
 | 4 | Zestaw D: Qwen3-Coder-Next — pomiar i ten sam test jakości co w B18 | Spark | krok 9, B18 |
@@ -70,7 +71,7 @@ Zmiany zidentyfikowane, celowo jeszcze niewprowadzone. Numeracja B* jest stała 
 | B11 | bench | Test współbieżności (1–32 równoczesnych zapytań) i profil `set-analysts` | `findings.md` 6.5 | wysoki przed testami z analitykami |
 | B12 | symulator (`docs/context/rag-ea-symulator.html`) | Efektywne TFLOPS i decode zależne od modelu (MoE ~30–55, dense ~110–130 TFLOPS; decode zmierzony) | `findings.md` 3.5 | **zrobione 2026-10-13**: dla Sparka TTFT i decode interpolowane z `bench/results/`, wagi zmierzone, Gemma 4 dodana; pozostałe platformy nadal szacunki |
 | B13 | modele | `make pin` — przypięcie rewizji wszystkich modeli z działających zestawów | odtwarzalność po resecie | średni |
-| B14 | compose / odtwarzalność | Sprawdzić zachowanie zestawu B po reboocie Sparka; jeśli start równoległy kończy się OOM — zdjąć `restart: unless-stopped` z usług vLLM albo uruchamiać je jednostką systemd wołającą `make up SET=b` | wszystkie kontenery mają `restart: unless-stopped`, a `docker` jest `enabled`, więc po reboocie trzy instancje vLLM startują **równolegle**, bez kolejności wymuszanej przez `depends_on` + healthcheck w `make up`. Przy sumie 0.82 i spadku wolnej pamięci do ~14,7 GiB przy ładowaniu sekwencyjnym (`findings.md` 3.6) może to skończyć się OOM i pętlą restartów. Nieprzetestowane — Spark z działającym zestawem B nie był jeszcze restartowany | średni |
+| B14 | compose / odtwarzalność | Sprawdzić zachowanie zestawu B po reboocie Sparka; jeśli start równoległy kończy się OOM — zdjąć `restart: unless-stopped` z usług vLLM albo uruchamiać je jednostką systemd wołającą `make up SET=b` | wszystkie kontenery mają `restart: unless-stopped`, a `docker` jest `enabled`, więc po reboocie trzy instancje vLLM startują **równolegle**, bez kolejności wymuszanej przez `depends_on` + healthcheck w `make up`. Przy sumie 0.82 i spadku wolnej pamięci do ~14,7 GiB przy ładowaniu sekwencyjnym (`findings.md` 3.6) może to skończyć się OOM i pętlą restartów. Nieprzetestowane — Spark z działającym zestawem B nie był jeszcze restartowany. 2026-10-13 15:50: nieplanowany restart (bez zapisu zamknięcia w `last -x`) przy zestawie C — kontenery nie wstały same (uruchomione ręcznie o 23:06), więc przebieg startu po reboocie wciąż niezaobserwowany | średni |
 | B15 | vLLM | Test dekodowania spekulacyjnego (MTP, `--speculative-config`) na Qwen3.6: czy model ma głowice MTP, zysk tok/s przy generowaniu kodu | jeden strumień jest ograniczony przepustowością pamięci (`findings.md` 3.9, 3.10: ~48 tok/s FP8); spekulacja może podnieść decode bez zmiany modelu — nieprzetestowane, wymaga restartu zestawu | średni → **wysoki**: na M3 Max Ollama używa MTP dla Qwen3.8 automatycznie — 39–51 tok/s wobec 21 bez MTP (`findings.md` 3.11.1); Spark 12,6 tok/s |
 | B16 | OpenCode | Równoległe agenty: kilka `opencode run "…"` w osobnych `git worktree`, pomiar łącznego tok/s i czasu zadania | 2 równoczesne zapytania dały ~77 tok/s łącznie wobec ~48 dla jednego (`findings.md` 3.10); limit `--max-num-seqs 16`, cache na ~21 zapytań po 64k (3.9); powiązane z B11 | niski |
 | B17 | porównanie | To samo zadanie w OpenCode na Sparku (zestaw C) i na Macu (llama.cpp, Qwen3.6 GGUF UD-Q4_K_M), zapis sesji z monitora tokenów do `bench/sessions/` | procedura i kolumny: `findings.md` 6.3.1; odpowiada na pytanie, ile daje Spark wobec laptopa w pracy agentowej, a nie tylko w `make bench` | średni |
